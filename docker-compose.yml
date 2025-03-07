@@ -1,0 +1,11 @@
+services:
+  angular-app:
+    build:
+      context: .
+      dockerfile: development.Dockerfile
+    volumes:
+      - ./app:/app
+      - /app/node_modules
+    ports:
+      - "4200:4200"
+    command: sh -c "cd /app && npm install && ng serve --host 0.0.0.0"
