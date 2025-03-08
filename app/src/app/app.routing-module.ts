@@ -4,8 +4,10 @@ import { IndexComponent } from './index/index.component';
 import { AppComponent } from './app.component';
 
 const routes: Routes = [
-    { path: '', component: AppComponent },
-    { path: 'index', component: IndexComponent }
+    { path: '', component: IndexComponent },
+    { path: 'index', component: IndexComponent },
+    { path: 'app' , component: AppComponent },
+    { path: '**', component: IndexComponent }
 ];
 
 @NgModule({
