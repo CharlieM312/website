@@ -1,0 +1,26 @@
+name: Build Application
+
+on:
+    push:
+
+jobs:
+
+    ng-build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            
+            - name: Set up node
+              uses: actions/setup-node@v2
+              with:
+                node-version: '22'
+
+            - name : Install + Build
+              run: |
+                npm install -g @angular/cli
+                cd app
+                npm install
+                ng build
+            
