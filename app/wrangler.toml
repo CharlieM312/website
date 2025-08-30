@@ -3,4 +3,3 @@ account_id = "dd2d5cff970ff7a051b8debc14bd6247"
 
 [site]
 bucket = "./dist/charlie-website"
-entry-point = "workers-site"
