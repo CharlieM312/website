@@ -40,4 +40,4 @@ jobs:
                 npm install -g @angular/cli
                 cd app
                 npm install
-                ng build --configuration production
+                npm run production
