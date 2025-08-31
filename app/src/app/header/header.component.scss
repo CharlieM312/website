@@ -12,12 +12,14 @@
 
 .menu-container {
     position: fixed;
+    top: 0;
+    left: 250px;
     align-items: center;
     background-color: #333;
+    width: calc(100vw - 250px);
     height: 60px;
-    margin-right: -10px;
-    margin-left: -10px;
     padding: 0;
+    z-index: 100;
 }
 
 h4 {
