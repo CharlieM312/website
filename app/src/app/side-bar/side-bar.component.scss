@@ -1,0 +1,26 @@
+
+
+.side-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    height: 100vh;
+    background-color: #3c0ae0;
+}
+
+h3 {
+    text-align: center;
+}
+
+h4 {
+    margin-left: 20px;
+}
+
+ul {
+    color: white;
+    a {
+        color: #fff;
+        text-decoration: none;
+    }
+}
