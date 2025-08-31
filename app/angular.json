@@ -40,6 +40,12 @@
                         }
                     }
                 },
+                "test": {
+                    "builder": "@angular-builders/jest:run",
+                    "options": {
+                        "configPath": "jest.config.js"
+                    }
+                },
                 "serve": {
                     "builder": "@angular-devkit/build-angular:dev-server",
                     "options": {
