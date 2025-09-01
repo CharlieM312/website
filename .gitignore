@@ -1,2 +1,4 @@
 node_modules
 app/.angular
+app/coverage
+app/test-results
