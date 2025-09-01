@@ -20,6 +20,13 @@
     height: 60px;
     padding: 0;
     z-index: 100;
+
+    @media (max-width: 600px) {
+        left: 120px;
+        width: calc(100vw - 120px);
+
+
+    }
 }
 
 h4 {
