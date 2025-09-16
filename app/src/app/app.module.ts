@@ -7,9 +7,10 @@ import { HeaderComponent } from './header/header.component';
 import { AboutComponent } from './about/about.component';
 import { SideBarComponent } from './side-bar/side-bar.component';
 import { LayoutComponent } from './layout/layout.component';
+import { SettingsComponent } from './settings/settings.component';
 
 @NgModule({
-    declarations: [AppComponent, IndexComponent, HeaderComponent, AboutComponent, SideBarComponent, LayoutComponent],
+    declarations: [AppComponent, IndexComponent, HeaderComponent, AboutComponent, SideBarComponent, LayoutComponent, SettingsComponent],
     imports: [BrowserModule, AppRoutingModule],
     bootstrap: [AppComponent]
 })
