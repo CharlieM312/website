@@ -1,0 +1,19 @@
+name: Auto approve
+
+on: 
+    pull_request:
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - uses: hmarr/auto-approve-action@v4
+      - uses: peter-evans/merge-pull-request@v3
+        with:
+          pull-request-number: ${{ github.event.pull_request.number }}
+          merge-method: squash
+          commit-title: "chore: bump dependencies"
+          commit-message: "Auto-approved dependency update"
