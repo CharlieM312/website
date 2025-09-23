@@ -3,6 +3,9 @@ name: Auto approve
 on: 
     pull_request:
 
+permissions:
+  pull-requests: write
+  contents: write
 jobs:
   auto-approve:
     runs-on: ubuntu-latest
@@ -11,9 +14,12 @@ jobs:
     if: github.actor == 'dependabot[bot]'
     steps:
       - uses: hmarr/auto-approve-action@v4
-      - uses: peter-evans/merge-pull-request@v3
+      - uses: actions/create-github-app-token@v2
+        id: app-token
         with:
-          pull-request-number: ${{ github.event.pull_request.number }}
-          merge-method: squash
-          commit-title: "chore: bump dependencies"
-          commit-message: "Auto-approved dependency update"
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.PRIVATE_KEY }}
+      - name: Enable Pull Request Automerge
+        run: gh pr merge --squash --auto "${{ github.event.pull_request.number }}"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
