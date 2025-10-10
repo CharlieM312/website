@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { DarkModeService } from '../services/dark-mode/dark-mode.service';
 
 @Component({
     selector: 'settings',
@@ -8,11 +9,14 @@ import { Component } from '@angular/core';
 })
 export class SettingsComponent {
 
+    constructor(private darkModeService: DarkModeService) { }
+
     darkModeEnabled = false;
 
     toggleDarkMode() {
+        this.darkModeService.toggleDarkMode();
         const content = document.querySelector('.content');
-        if (this.darkModeEnabled) {
+        if (this.darkModeService.isDarkModeEnabled()) {
             document.body.classList.add('dark-mode');
             if (content) content.classList.add('dark-mode');
         } else {
