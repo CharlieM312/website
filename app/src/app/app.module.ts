@@ -8,10 +8,11 @@ import { AboutComponent } from './about/about.component';
 import { SideBarComponent } from './side-bar/side-bar.component';
 import { LayoutComponent } from './layout/layout.component';
 import { SettingsComponent } from './settings/settings.component';
+import { FormsModule } from '@angular/forms';
 
 @NgModule({
     declarations: [AppComponent, IndexComponent, HeaderComponent, AboutComponent, SideBarComponent, LayoutComponent, SettingsComponent],
-    imports: [BrowserModule, AppRoutingModule],
+    imports: [BrowserModule, AppRoutingModule, FormsModule],
     bootstrap: [AppComponent]
 })
 export class AppModule { }
