@@ -11,4 +11,10 @@ updates:
       interval: "weekly"
       day: "saturday"
       time: "09:00"
-    
+      timezone: "Europe/London"
+    versioning-strategy: increase
+    groups:
+      angular-packages:
+        patterns:
+          - "angular*"
+          - "@angular/*"
