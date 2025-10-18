@@ -3,7 +3,8 @@ import tsParser from '@typescript-eslint/parser';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 let recommendedConfig;
 try {
-  recommendedConfig = require('eslint/conf/eslint-recommended');
+  const mod = await import('eslint/conf/eslint-recommended');
+  recommendedConfig = mod.default ?? mod;
 } catch {
   recommendedConfig = {};
 }
