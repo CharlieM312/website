@@ -14,7 +14,10 @@ jobs:
       contents: write
     if: github.actor == 'dependabot[bot]'
     steps:
-      - uses: hmarr/auto-approve-action@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Auto Approve
+        uses: hmarr/auto-approve-action@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Enable Pull Request Automerge
