@@ -4,6 +4,8 @@ body.dark-mode,
   color: #fff !important;
 }
 
+@import "~leaflet/dist/leaflet.css";
+
 .dark-mode {
   background: #222;
   color: #fff;
