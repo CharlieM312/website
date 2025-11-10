@@ -26,4 +26,9 @@ describe('IndexComponent', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('app-header')).toBeTruthy();
   });
+
+  it('should display map container', () => {
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('#map')).toBeTruthy();
+  });
 });
