@@ -83,17 +83,16 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
     private addAirports(){
         // London Airports
         L.marker([51.4706, -0.4619]).bindPopup('Heathrow').addTo(this.map!);
-        this.map!.setView([51.4706, -0.4619], 7);
         L.marker([51.1481, -0.1903]).bindPopup('Gatwick').addTo(this.map!);
         L.marker([51.5053, 0.0553]).bindPopup('London City').addTo(this.map!);
         // Other airports
         L.marker([52.4539, 1.7486]).bindPopup('Norwich').addTo(this.map!);
-        L.marker([53.3807, -1.4701]).bindPopup('Leeds Bradford').addTo(this.map!);
+        L.marker([53.3807, -1.6606]).bindPopup('Leeds Bradford').addTo(this.map!);
         L.marker([53.3537, -2.2746]).bindPopup('Manchester').addTo(this.map!);
+        L.marker([55.0375, -1.6917]).bindPopup('Newcastle').addTo(this.map!);
         // Ireland Airports
         L.marker([53.3537, -6.2489]).bindPopup('Dublin').addTo(this.map!);
-        L.marker([53.4213, -6.2701]).bindPopup('Shannon').addTo(this.map!);
-        L.marker([55.0375, -1.6917]).bindPopup('Newcastle').addTo(this.map!);
+        L.marker([53.4213, -8.9248]).bindPopup('Shannon').addTo(this.map!);
         // Scotland Airports
         L.marker([57.1217, -2.2426]).bindPopup('Aberdeen').addTo(this.map!);
         L.marker([55.8719, -4.4331]).bindPopup('Glasgow').addTo(this.map!);
