@@ -31,4 +31,16 @@ describe('IndexComponent', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('#map')).toBeTruthy();
   });
+
+  it('should hide and show London airports', () => {
+    component.englishAirportsVisible = false;
+    component.toggleLondonAirports();
+    expect(component.englishAirportsVisible).toBe(false);
+  });
+
+  it('should hide and show Scottish airports', () => {
+    component.scottishAirportsVisible = false;
+    component.toggleScottishAirports();
+    expect(component.scottishAirportsVisible).toBe(false);
+  });
 });
