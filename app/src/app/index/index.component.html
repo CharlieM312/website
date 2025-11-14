@@ -2,6 +2,19 @@
 <div class="website-container">
     <h3>This is the first new section of my website</h3>
     <p>The plan for this is an airport map of all UK airports, where you can put airports, terminals visited, and flights!</p>
+    <label>
+      <input type="checkbox" [(ngModel)]="englishAirportsVisible" (change)="toggleLondonAirports()" />
+      Show/Hide London Airports
+    </label>
+    <label>
+      <input type="checkbox" [(ngModel)]="scottishAirportsVisible" (change)="toggleScottishAirports()" />
+      Show/Hide Scottish Airports
+    </label>
+    <label>
+      <input type="checkbox" [(ngModel)]="belfastAirportsVisible" (change)="toggleBelfastAirports()" />
+      Show/Hide Belfast Airports
+    </label>
+    <br/>
     <section class="airport-map">
         <div id="map"></div>
     </section>
