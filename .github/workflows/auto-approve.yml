@@ -30,8 +30,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Set environment variable of github token
+        run: echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
       - name: Auto Merge
         uses: pascalgn/automerge-action@v0.15.3
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          merge-method: squash
