@@ -19,3 +19,7 @@ updates:
           - "angular*"
           - "@angular/*"
           - "@angular-devkit/*"
+      typescript-stuff:
+        patterns:
+          - "@typescript-eslint/*"
+
