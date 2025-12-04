@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HeaderComponent } from './header.component';
-import { AppModule } from '../app.module';
 import { Router } from '@angular/router';
 
 describe('HeaderComponent', () => {
@@ -10,7 +9,7 @@ describe('HeaderComponent', () => {
     beforeEach(async () => {
         await TestBed.configureTestingModule({
             declarations: [HeaderComponent],
-            imports: [AppModule]
+            providers: [{ provide: Router, useValue: { navigate: vi.fn() } }]
         })
             .compileComponents();
 
@@ -28,7 +27,7 @@ describe('HeaderComponent', () => {
 
     it('should navigate to about', () => {
         const router = TestBed.inject(Router);
-        const navigateSpy = jest.spyOn(router, 'navigate');
+        const navigateSpy = vi.spyOn(router, 'navigate');
         const button = fixture.nativeElement.querySelector('.menu');
         button.click();
         expect(navigateSpy).toHaveBeenCalledWith(['/about']);

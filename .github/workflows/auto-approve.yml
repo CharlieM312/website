@@ -15,7 +15,7 @@ jobs:
     if: github.actor == 'dependabot[bot]'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Auto Approve
         uses: hmarr/auto-approve-action@v4
         with:
@@ -29,8 +29,11 @@ jobs:
     if: github.actor == 'dependabot[bot]'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set environment variable of github token
-        run: echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+        run: |
+          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+          echo "MERGE_LABELS=automerge" >> $GITHUB_ENV
+          echo "MERGE_METHOD=squash" >> $GITHUB_ENV
       - name: Auto Merge
-        uses: pascalgn/automerge-action@v0.15.3
+        uses: pascalgn/automerge-action@v0.16.4

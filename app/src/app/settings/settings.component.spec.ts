@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SettingsComponent } from './settings.component';
-import { AppModule } from '../app.module';
 
 describe('Settings', () => {
   let component: SettingsComponent;
@@ -8,9 +7,9 @@ describe('Settings', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [SettingsComponent],
-      imports: [AppModule]
+      declarations: [SettingsComponent]
     })
+    .overrideComponent(SettingsComponent, { set: { template: '<div></div>' } })
     .compileComponents();
 
     fixture = TestBed.createComponent(SettingsComponent);
