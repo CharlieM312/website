@@ -1,13 +1,33 @@
 import { defineConfig } from 'vitest/config';
-import angular from '@analogjs/vite-plugin-angular'; // or the plugin you installed
+import '@angular/compiler';
 
 export default defineConfig({
-  plugins: [angular()],
   test: {
     globals: true,
     environment: 'jsdom',
     include: ['src/**/*.spec.ts'],
     setupFiles: 'src/test-setup.ts',
-    threads: false
+    threads: false,
+    deps: {
+      inline: [
+        '@angular/core',
+        '@angular/common',
+        '@angular/common/http',
+        '@angular/platform-browser',
+        '@angular/platform-browser-dynamic',
+        '@angular/platform-browser/testing',
+        '@angular/forms',
+        '@angular/router',
+        '@angular/animations',
+        '@angular/compiler'
+      ]
+    }
+  },
+  optimizeDeps: {
+    include: [
+      '@angular/core',
+      '@angular/common',
+      '@angular/platform-browser'
+    ]
   }
 });
