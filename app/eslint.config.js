@@ -11,6 +11,8 @@ try {
 const compat = new FlatCompat({ recommendedConfig });
 
 export default [
+
+  { ignores: ['**/vitest.config.*', '**/package.json'] },
   ...compat.extends(
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended'

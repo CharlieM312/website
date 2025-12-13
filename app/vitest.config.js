@@ -19,7 +19,9 @@ export default defineConfig({
         '@angular/forms',
         '@angular/router',
         '@angular/animations',
-        '@angular/compiler'
+        '@angular/compiler',
+        'rxjs',
+        'ngx-cookie-service'
       ]
     }
   },
