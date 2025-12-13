@@ -2,13 +2,11 @@
     "compilerOptions": {
         "outDir": "./out-tsc/spec",
         "types": [
-            "jasmine",
-            "node",
-            "jest"
+            "vitest/globals",
+            "node"
         ],
-        "module": "commonjs",
-        "target": "es6",
-        "moduleResolution": "node",
+        "module": "es2022",
+        "moduleResolution": "bundler",
         "sourceMap": true,
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true,
@@ -19,6 +17,7 @@
     },
     "include": [
         "src/**/*.spec.ts",
-        "src/**/*.d.ts"
+        "src/**/*.d.ts",
+        "src/test-setup.ts"
     ]
 }
