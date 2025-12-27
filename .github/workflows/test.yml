@@ -29,15 +29,10 @@ jobs:
               run: |
                 cd app
                 npm ci
-            
-            - name: Clear Jest cache
-              run: |
-                cd app
-                npx jest --clearCache
             - name: Run tests
               run: |
                 cd app
-                npm test
+                npm run test
             - name: Upload test results
               uses: actions/upload-artifact@v4
               if: always()
