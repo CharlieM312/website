@@ -1,24 +1,12 @@
 {
+    "extends": "./tsconfig.json",
     "compilerOptions": {
         "outDir": "./out-tsc/spec",
-        "types": [
-            "jasmine",
-            "node",
-            "jest"
-        ],
+        "types": ["jasmine", "node", "jest"],
         "module": "commonjs",
-        "target": "es6",
-        "moduleResolution": "node",
-        "sourceMap": true,
-        "emitDecoratorMetadata": true,
-        "experimentalDecorators": true,
-        "lib": [
-            "es2018",
-            "dom"
-        ]
+        "target": "es2018",
+        "moduleResolution": "node16",
+        "sourceMap": true
     },
-    "include": [
-        "src/**/*.spec.ts",
-        "src/**/*.d.ts"
-    ]
+    "include": ["src/**/*.spec.ts", "src/**/*.d.ts"]
 }
