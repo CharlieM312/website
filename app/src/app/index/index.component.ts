@@ -54,11 +54,16 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     private initMap(): void {
-        (L.Icon.Default as any).mergeOptions({
+        const iconDefault = L.icon({
             iconRetinaUrl: 'assets/leaflet-images/marker-icon-2x.png',
             iconUrl: 'assets/leaflet-images/marker-icon.png',
-            shadowUrl: 'assets/leaflet-images/marker-shadow.png'
+            shadowUrl: 'assets/leaflet-images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
         });
+        L.Marker.prototype.options.icon = iconDefault;
 
         this.map = L.map('map', { center: [54.0, -2.0], zoom: 5 });
 
@@ -94,8 +99,10 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         this.map?.eachLayer(layer => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((layer as any).redraw) {
-            (layer as any).redraw();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (layer as any).redraw();
             }
         });
 
@@ -114,8 +121,10 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         this.map?.eachLayer(layer => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((layer as any).redraw) {
-            (layer as any).redraw();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (layer as any).redraw();
             }
         });
 
