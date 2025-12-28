@@ -12,16 +12,15 @@
                         "allowedCommonJsDependencies": [
                             "leaflet"
                         ],
-                        "outputPath": {
-                          "base": "dist/charlie-website"
-                        },
+                        "outputPath": "dist/charlie-website",
                         "index": "src/index.html",
                         "polyfills": [
                           "src/polyfills.ts"
                         ],
                         "tsConfig": "tsconfig.app.json",
                         "assets": [
-                            "src/assets"
+                            "src/assets",
+                            "src/_redirects"
                         ],
                         "styles": [
                             "src/styles.scss"
