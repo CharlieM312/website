@@ -1,4 +1,7 @@
 {
+  "name": "website-root",
+  "version": "1.0.0",
+  "private": true,
   "devDependencies": {
     "eslint-config-recommended": "^4.1.0"
   }
