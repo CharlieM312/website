@@ -1,69 +1,79 @@
 {
-    "version": 1,
-    "projects": {
-        "charlie-website": {
-            "root": "src",
-            "sourceRoot": "src",
-            "projectType": "application",
-            "architect": {
-                "build": {
-                    "builder": "@angular/build:application",
-                    "options": {
-                        "allowedCommonJsDependencies": [
-                            "leaflet"
-                        ],
-                        "outputPath": "dist/charlie-website",
-                        "index": "src/index.html",
-                        "polyfills": [
-                          "src/polyfills.ts"
-                        ],
-                        "tsConfig": "tsconfig.app.json",
-                        "assets": [
-                            "src/assets",
-                            "src/_redirects"
-                        ],
-                        "styles": [
-                            "src/styles.scss"
-                        ],
-                        "scripts": [],
-                        "browser": "src/main.ts"
-                    },
-                    "configurations": {
-                        "production": {
-                            "optimization": true,
-                            "outputHashing": "all",
-                            "sourceMap": false,
-                            "namedChunks": false,
-                            "aot": true,
-                            "budgets": [
-                                {
-                                    "type": "initial",
-                                    "maximumWarning": "5mb",
-                                    "maximumError": "10mb"
-                                }
-                            ]
-                        }
-                    }
-                },
-                "test": {
-                    "builder": "@angular-builders/jest:run",
-                    "options": {
-                        "configPath": "jest.config.js"
-                    }
-                },
-                "serve": {
-                    "builder": "@angular/build:dev-server",
-                    "options": {
-                        "buildTarget": "charlie-website:build",
-                        "allowedCommonJsDependencies": [
-                            "leaflet"
-                        ]
-                    }
+  "version": 1,
+  "projects": {
+    "charlie-website": {
+      "root": "src",
+      "sourceRoot": "src",
+      "projectType": "application",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "allowedCommonJsDependencies": [
+              "leaflet"
+            ],
+            "outputPath": "dist/charlie-website",
+            "index": "src/index.html",
+            "polyfills": [
+              "src/polyfills.ts"
+            ],
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              "src/assets",
+              "src/_redirects"
+            ],
+            "styles": [
+              "src/styles.scss"
+            ],
+            "scripts": [],
+            "browser": "src/main.ts"
+          },
+          "configurations": {
+            "production": {
+              "optimization": true,
+              "outputHashing": "all",
+              "sourceMap": false,
+              "namedChunks": false,
+              "aot": true,
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "5mb",
+                  "maximumError": "10mb"
                 }
+              ]
             }
+          }
+        },
+        "test": {
+          "builder": "@angular-builders/jest:run",
+          "options": {
+            "configPath": "jest.config.js"
+          }
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": {
+            "buildTarget": "charlie-website:build"
+          }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "src/**/*.ts",
+              "src/**/*.html"
+            ],
+            "eslintConfig": "eslint.config.js"
+          }
         }
-    },
-    "cli": {
-      "analytics": false
+      }
     }
+  },
+  "cli": {
+    "analytics": false,
+    "schematicCollections": [
+      "angular-eslint"
+    ]
+  }
 }

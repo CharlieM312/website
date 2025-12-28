@@ -1,0 +1,27 @@
+name: Lint
+on:
+    pull_request:
+    push:
+      branches:
+        - main
+permissions:
+    contents: read
+jobs:
+  Lint:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+    - name: Set up Node.js
+      uses: actions/setup-node@v6
+      with:
+          node-version: '22'
+    - name: Install dependencies
+      run: |
+        cd app
+        npm ci
+    - name: Run ESLint
+      run: |
+        cd app
+        npm install -g @angular/cli
+        ng lint
