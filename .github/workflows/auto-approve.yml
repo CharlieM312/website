@@ -35,7 +35,10 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           labels: automerge
-      - name: Set environment variable of github token
-        run: echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+      - name: Set environment variables
+        run: |
+          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+          echo "MERGE_METHOD=squash" >> $GITHUB_ENV
+          echo "MERGE_RETRY_SLEEP=10000" >> $GITHUB_ENV
       - name: Auto Merge
         uses: pascalgn/automerge-action@v0.16.4
