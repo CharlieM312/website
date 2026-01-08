@@ -24,4 +24,9 @@ jobs:
       run: |
         cd app
         npm install -g @angular/cli
-        ng lint
+        if ng lint --format summary; then
+          echo "✅ Linting passed - 0 problems" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Linting failed - see errors above" >> $GITHUB_STEP_SUMMARY
+          exit 1
+        fi
