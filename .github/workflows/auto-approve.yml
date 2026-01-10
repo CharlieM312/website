@@ -9,6 +9,8 @@ permissions:
 jobs:
   auto-approve:
     runs-on: ubuntu-latest
+    outputs:
+      token: ${{ steps.generate-token.outputs.token }}
     permissions:
       pull-requests: write
       contents: write
@@ -16,10 +18,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.PRIVATE_KEY }}
       - name: Auto Approve
         uses: hmarr/auto-approve-action@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.generate-token.outputs.token }}
   merge:
     runs-on: ubuntu-latest
     needs: auto-approve
@@ -33,12 +41,10 @@ jobs:
       - name: Add automerge label
         uses: actions-ecosystem/action-add-labels@v1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ needs.auto-approve.outputs.token }}
           labels: automerge
-      - name: Set environment variables
-        run: |
-          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
-          echo "MERGE_METHOD=squash" >> $GITHUB_ENV
-          echo "MERGE_RETRY_SLEEP=10000" >> $GITHUB_ENV
-      - name: Auto Merge
-        uses: pascalgn/automerge-action@v0.16.4
+      - name: Enable auto-merge
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ needs.auto-approve.outputs.token }}

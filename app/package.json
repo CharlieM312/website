@@ -27,7 +27,7 @@
     "zone.js": "^0.16.0"
   },
   "devDependencies": {
-    "@angular-builders/jest": "^21.0.0-beta.1",
+    "@angular-builders/jest": "^21.0.3",
     "@angular/build": "^21.0.5",
     "@angular/cli": "21.0.5",
     "@angular/compiler-cli": "21.0.8",
@@ -35,7 +35,6 @@
     "@types/jasmine": "^5.1.14",
     "@types/jest": "^30.0.0",
     "@types/leaflet": "^1.9.21",
-    "@types/mocha": "^10.0.10",
     "@types/node": "^25.0.5",
     "angular-eslint": "21.1.0",
     "eslint": "^9.39.2",
