@@ -36,7 +36,6 @@ jobs:
               uses: actions/setup-node@v6
               with:
                 node-version: '24'
-
             - name : Install + Build
               run: |
                 npm install -g @angular/cli

@@ -23,7 +23,8 @@ jobs:
         uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ vars.APP_ID }}
-          private-key: ${{ secrets.PRIVATE_KEY }}
+          private-key: |
+            ${{ secrets.PRIVATE_KEY }}
       - name: Auto Approve
         uses: hmarr/auto-approve-action@v4
         with:
