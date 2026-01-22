@@ -16,10 +16,8 @@ updates:
     groups:
       angular-packages:
         patterns:
-          - "angular*"
           - "@angular/*"
-          - "@angular-devkit/*"
-      typescript-stuff:
+      jest:
         patterns:
-          - "@typescript-eslint/*"
+          - "jest*"
 
