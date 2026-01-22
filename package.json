@@ -8,8 +8,5 @@
     "production": "cd app && ng build --configuration production --project=charlie-website",
     "test": "cd app && ng test --project=charlie-website",
     "lint": "cd app && ng lint --project=charlie-website"
-  },
-  "devDependencies": {
-    "eslint-config-recommended": "^4.1.0"
   }
 }
