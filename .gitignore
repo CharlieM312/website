@@ -3,3 +3,4 @@ app/.angular
 app/coverage
 app/test-results
 .idea/
+.vscode/settings.json
