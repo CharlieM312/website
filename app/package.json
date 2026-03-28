@@ -28,8 +28,8 @@
   },
   "devDependencies": {
     "@angular-builders/jest": "^21.0.3",
-    "@angular/build": "21.2.4",
-    "@angular/cli": "21.2.4",
+    "@angular/build": "21.2.5",
+    "@angular/cli": "21.2.5",
     "@angular/compiler-cli": "21.2.6",
     "@eslint/eslintrc": "^3.3.5",
     "@types/jasmine": "^6.0.0",
