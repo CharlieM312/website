@@ -174,6 +174,8 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
         this.other_uk_markers.push(L.marker([51.8850, 0.2350]).bindPopup('Stansted').addTo(this.map!));
         this.other_uk_markers.push(L.marker([51.8747, -0.3683]).bindPopup('Luton').addTo(this.map!));
         this.other_uk_markers.push(L.marker([53.3336, -2.8947]).bindPopup('Liverpool').addTo(this.map!));
+        this.other_uk_markers.push(L.marker([53.4753, -1.0043]).bindPopup('Doncaster Sheffield').addTo(this.map!));
+        this.other_uk_markers.push(L.marker([51.3823, -2.7165]).bindPopup('Bristol').addTo(this.map!));
         // Ireland Airports
         L.marker([53.3537, -6.2489]).bindPopup('Dublin').addTo(this.map!);
         L.marker([53.4213, -8.9248]).bindPopup('Shannon').addTo(this.map!);

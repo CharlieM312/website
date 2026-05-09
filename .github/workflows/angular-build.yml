@@ -16,7 +16,7 @@ jobs:
             - name: Set up node
               uses: actions/setup-node@v6
               with:
-                node-version: '24'
+                node-version-file: 'app/.nvmrc'
 
             - name : Install + Build
               run: |
@@ -36,7 +36,7 @@ jobs:
         - name: Set up node
           uses: actions/setup-node@v6
           with:
-            node-version: '24'
+            node-version-file: 'app/.nvmrc'
         - name : Install + Build
           run: |
               npm install -g @angular/cli
