@@ -43,4 +43,16 @@ describe('IndexComponent', () => {
     component.toggleScottishAirports();
     expect(component.scottishAirportsVisible).toBe(false);
   });
+
+  it('should hide and show Irish airports', () => {
+    component.irishAirportsVisible = false;
+    component.toggleIrishAirports();
+    expect(component.irishAirportsVisible).toBe(false);
+  });
+
+  it('should hide and show Isle of Man airports', () => {
+    component.isleOfManAirportsVisible = false;
+    component.toggleIsleOfManAirports();
+    expect(component.isleOfManAirportsVisible).toBe(false);
+  });
 });

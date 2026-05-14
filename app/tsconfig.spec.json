@@ -2,9 +2,9 @@
     "extends": "./tsconfig.json",
     "compilerOptions": {
         "outDir": "./out-tsc/spec",
-        "types": ["jasmine", "node", "jest"],
+        "types": ["jest"],
         "module": "commonjs",
-        "target": "es2018",
+        "target": "es2022",
         "moduleResolution": "node16",
         "sourceMap": true,
         "paths": {
@@ -12,5 +12,5 @@
             "@angular/*/testing": ["node_modules/@angular/*/types/testing.d.ts"]
         }
     },
-    "include": ["src/**/*.spec.ts", "src/**/*.d.ts"]
+    "include": ["src/app/**/*.spec.ts", "src/**/*.d.ts"]
 }

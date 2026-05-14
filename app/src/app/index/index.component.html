@@ -15,8 +15,16 @@
       Show Scottish Airports
     </label>
     <label>
-      <input type="checkbox" [(ngModel)]="belfastAirportsVisible" (change)="toggleBelfastAirports()" />
-      Show Belfast Airports
+      <input type="checkbox" [(ngModel)]="isleOfManAirportsVisible" (change)="toggleIsleOfManAirports()" />
+      Show Isle of Man Airports
+    </label>
+    <label>
+      <input type="checkbox" [(ngModel)]="northernIrishAirportsVisible" (change)="toggleNorthernIrishAirports()" />
+      Show Northern Irish Airports
+    </label>
+    <label>
+      <input type="checkbox" [(ngModel)]="irishAirportsVisible" (change)="toggleIrishAirports()" />
+      Show Irish Airports
     </label>
     <br/>
     <section class="airport-map">
