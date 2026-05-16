@@ -21,4 +21,15 @@ describe('Settings', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('should toggle dark mode', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    const checkbox = element.querySelector('#darkModeToggle') as HTMLInputElement;
+    checkbox.click();
+    fixture.detectChanges();
+    expect(component.darkModeEnabled).toBe(true);
+    checkbox.click();
+    fixture.detectChanges();
+    expect(component.darkModeEnabled).toBe(false);
+  });
 });

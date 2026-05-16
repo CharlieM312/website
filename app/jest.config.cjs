@@ -20,5 +20,8 @@ module.exports = {
   reporters: [
     'default',
     ['jest-junit', { outputDirectory: './test-results', outputName: 'results.xml' }]
-  ]
+  ],
+  collectCoverage: true,
+  coverageDirectory: './coverage',
+  coverageReporters: ['html', 'lcov', 'text-summary']
 };
