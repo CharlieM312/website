@@ -105,9 +105,7 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         this.map?.eachLayer(layer => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((layer as any).redraw) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (layer as any).redraw();
             }
         });
@@ -127,9 +125,7 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
         this.map?.eachLayer(layer => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if ((layer as any).redraw) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (layer as any).redraw();
             }
         });
@@ -205,6 +201,7 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
         this.other_uk_markers.push(L.marker([53.3336, -2.8947]).bindPopup('Liverpool').addTo(this.map!));
         this.other_uk_markers.push(L.marker([53.4753, -1.0043]).bindPopup('Doncaster Sheffield').addTo(this.map!));
         this.other_uk_markers.push(L.marker([51.3823, -2.7165]).bindPopup('Bristol').addTo(this.map!));
+        this.other_uk_markers.push(L.marker([53.7842, -1.2178]).bindPopup('Sherburn').addTo(this.map!));
         // Northern Ireland Airports
         this.northern_irish_markers.push(L.marker([53.3537, -6.2489]).bindPopup('Dublin').addTo(this.map!));
         this.northern_irish_markers.push(L.marker([53.4213, -8.9248]).bindPopup('Shannon').addTo(this.map!));

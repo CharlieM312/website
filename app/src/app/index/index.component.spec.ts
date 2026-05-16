@@ -33,26 +33,68 @@ describe('IndexComponent', () => {
   });
 
   it('should hide and show London airports', () => {
-    component.englishAirportsVisible = false;
-    component.toggleLondonAirports();
+    const element = fixture.nativeElement as HTMLElement;
+    const checkbox = element.querySelector('#londonAirports') as HTMLInputElement;
+    checkbox.click();
+    fixture.detectChanges();
+    expect(component.londonAirportsVisible).toBe(false);
+    checkbox.click();
+    fixture.detectChanges();
+    expect(component.londonAirportsVisible).toBe(true);
+  });
+
+  it('should hide and show English airports', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    const checkbox = element.querySelector('#englishAirports') as HTMLInputElement;
+    checkbox.click();
+    fixture.detectChanges();
     expect(component.englishAirportsVisible).toBe(false);
+    checkbox.click();
+    fixture.detectChanges();
+    expect(component.englishAirportsVisible).toBe(true);
   });
 
   it('should hide and show Scottish airports', () => {
-    component.scottishAirportsVisible = false;
-    component.toggleScottishAirports();
+    const element = fixture.nativeElement as HTMLElement;
+    const checkbox = element.querySelector('#scottishAirports') as HTMLInputElement;
+    checkbox.click();
+    fixture.detectChanges();
     expect(component.scottishAirportsVisible).toBe(false);
+    checkbox.click();
+    fixture.detectChanges();
+    expect(component.scottishAirportsVisible).toBe(true);
+  });
+
+  it('should hide and show Northern Irish airports', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    const checkbox = element.querySelector('#northernIrishAirports') as HTMLInputElement;
+    checkbox.click();
+    fixture.detectChanges();
+    expect(component.northernIrishAirportsVisible).toBe(false);
+    checkbox.click();
+    fixture.detectChanges();
+    expect(component.northernIrishAirportsVisible).toBe(true);
   });
 
   it('should hide and show Irish airports', () => {
-    component.irishAirportsVisible = false;
-    component.toggleIrishAirports();
+    const element = fixture.nativeElement as HTMLElement;
+    const checkbox = element.querySelector('#irishAirports') as HTMLInputElement;
+    checkbox.click();
+    fixture.detectChanges();
     expect(component.irishAirportsVisible).toBe(false);
+    checkbox.click();
+    fixture.detectChanges();
+    expect(component.irishAirportsVisible).toBe(true);
   });
 
   it('should hide and show Isle of Man airports', () => {
-    component.isleOfManAirportsVisible = false;
-    component.toggleIsleOfManAirports();
+    const element = fixture.nativeElement as HTMLElement;
+    const checkbox = element.querySelector('#isleOfManAirports') as HTMLInputElement;
+    checkbox.click();
+    fixture.detectChanges();
     expect(component.isleOfManAirportsVisible).toBe(false);
+    checkbox.click();
+    fixture.detectChanges();
+    expect(component.isleOfManAirportsVisible).toBe(true);
   });
 });
