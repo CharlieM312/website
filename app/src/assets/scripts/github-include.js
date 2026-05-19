@@ -48,6 +48,11 @@ div > a:nth-of-type(1) {
   align-items: center;
   min-height: 2em;
 }
+.workflow-success { color: #2e7d32; margin-right: .5em; }
+.workflow-failure { color: #c62828; margin-right: .5em; }
+.workflow-in-progress { color: #f9a825; margin-right: .5em; }
+.workflow-neutral { color: #666; margin-right: .5em; }
+.workflow-label { color: inherit; }
 </style>`;
 
 let user = '';
@@ -66,7 +71,7 @@ const createpages = (from,container,user,repo) => {
     pageslink.classList.add('github-include-pages');
     pageslink.href = `https://${user}.github.io/${repo}/`;
     pageslink.target = '_blank';
-    pageslink.rel = 'noopener';
+    pageslink.rel = 'noopener noreferrer';
     pageslink.title = `View GitHub Pages for ${repo}`;
     pageslink.innerHTML = getsettings('pages', from) === '' ? 'Demo' : getsettings('pages', from);
     container.appendChild(pageslink);
@@ -107,7 +112,7 @@ const getcommits = async (from, container, user, repo) => {
   list.innerHTML = commits.map(commit => {
     const title = commit.commit.message.split('\n')[0];
     const link = commit.html_url;
-    return `<li>${links ? `<a href="${link}" target="_blank" rel="noopener">` : ''}${title}${links ? '</a>' : ''}</li>`;
+    return `<li>${links ? `<a href="${link}" target="_blank" rel="noopener noreferrer">` : ''}${title}${links ? '</a>' : ''}</li>`;
   }).join('');
 };
 
@@ -141,23 +146,45 @@ const getworkflows = async (from, container, user, repo) => {
 
   const data = await response.json();
 
-  list.innerHTML = data.workflow_runs.map(run => {
-    const statusIcon =
-        run.conclusion === 'success' ? '✅' :
-        run.conclusion === 'failure' ? '❌' :
-        run.conclusion === 'cancelled' ? '⚪' :
-        run.status === 'in_progress' ? '🟡' :
-        '⚫';
+  list.textContent = '';
 
+    // helper to pick an icon and class
+    const getStatus = run => {
+    if (run.conclusion === 'success') return {icon: '✅', cls: 'workflow-success'};
+    if (run.conclusion === 'failure') return {icon: '❌', cls: 'workflow-failure'};
+    if (run.conclusion === 'cancelled') return {icon: '⚪', cls: 'workflow-cancelled'};
+    if (run.status === 'in_progress') return {icon: '🟡', cls: 'workflow-in-progress'};
+    return {icon: '⚫', cls: 'workflow-neutral'};
+    };
+
+    data.workflow_runs.forEach(run => {
+    const { icon, cls } = getStatus(run);
     const statusText = run.conclusion || run.status;
-    const label = `${statusIcon} ${run.name} - ${statusText}`;
 
-    return `<li><a href="${run.html_url}" target="_blank" rel="noopener">${label}</a></li>`;
-  }).join('');
+    const li = document.createElement('li');
+    const a = document.createElement('a');
+    a.href = run.html_url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = cls;
+    iconSpan.textContent = icon; // safe
+
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'workflow-label';
+    // Use textContent so run.name cannot inject HTML
+    labelSpan.textContent = ` ${run.name} — ${statusText}`;
+
+    a.appendChild(iconSpan);
+    a.appendChild(labelSpan);
+    li.appendChild(a);
+    list.appendChild(li);
+    });
 };
 
 // Web Component
-class gitHubInclude extends HTMLElement {
+class GitHubInclude extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -198,4 +225,4 @@ class gitHubInclude extends HTMLElement {
     init();
   }
 }
-customElements.define('github-include', gitHubInclude);
+customElements.define('github-include', GitHubInclude);
