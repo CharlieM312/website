@@ -50,8 +50,6 @@ div > a:nth-of-type(1) {
 }
 </style>`;
 
-let proxy = 'https://api.allorigins.win/raw?url=';
-let suffix = '/commits/main.atom';
 let user = '';
 let repo = '';
 
@@ -61,7 +59,7 @@ const getsettings = (setting, source) => {
     } else {
         return source.dataset[setting];
     }
-}
+};
 
 const createpages = (from,container,user,repo) => {
     let pageslink = document.createElement('a');
@@ -72,45 +70,91 @@ const createpages = (from,container,user,repo) => {
     pageslink.title = `View GitHub Pages for ${repo}`;
     pageslink.innerHTML = getsettings('pages', from) === '' ? 'Demo' : getsettings('pages', from);
     container.appendChild(pageslink);
-}
+};
 
-const getcommits = (from,container,user,repo) => {
-    let links =  getsettings('links', from);
-    links = links === "true" ? true : false;
-    let commitheader = getsettings('commitheader', from) || 'Latest commits: ';
-    let loadingmessage = getsettings('loadingmessage', from) || 'loading…';
-    let p = document.createElement('p');
-    p.className = 'github-include-commitheader';
-    p.innerText = commitheader;
-    container.appendChild(p);
-    let origin = container.querySelector('a').href;
-    let url = `${proxy}${encodeURIComponent(origin+suffix)}`;
-    let list = document.createElement('ul');
-    list.className = 'github-include-commits';
-    container.appendChild(list);
-    list.innerHTML = loadingmessage;
-    fetch(url, {"method": "GET"})
-        .then(response => response.text())
-        .then(str => new window.DOMParser().parseFromString(str, "text/xml"))
-        .then(data => {
-            let items = data.querySelectorAll("entry");
-            let out = '';
-            if (getsettings('commits', from) !== "-1") {
-                items = Array.from(items).slice(0, +getsettings('commits', from));
-            }
-            items.forEach(el => {
-                let title = el.querySelector("title").innerHTML;
-                let link = el.querySelector("link").getAttribute('href');
-                out += `<li>
-                    ${links ? `<a href="${link}">` : ''}
-                    ${title.trim()}
-                    ${links  ? `</a>` : ''}
-                </li>`;
-            });
-            list.innerHTML = out;
-        });
+const getcommits = async (from, container, user, repo) => {
+  const links = getsettings('links', from) === 'true';
+  const commitheader = getsettings('commitheader', from) || 'Latest commits: ';
+  const loadingmessage = getsettings('loadingmessage', from) || 'loading…';
+  const commitCount = getsettings('commits', from) || '5';
 
-}
+  const p = document.createElement('p');
+  p.className = 'github-include-commitheader';
+  p.innerText = commitheader;
+  container.appendChild(p);
+
+  const list = document.createElement('ul');
+  list.className = 'github-include-commits';
+  list.innerHTML = `<li>${loadingmessage}</li>`;
+  container.appendChild(list);
+
+  const url = `https://api.github.com/repos/${user}/${repo}/commits?per_page=${commitCount}`;
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2026-03-10'
+    }
+  });
+
+  if (!response.ok) {
+    list.innerHTML = '<li>Failed to load commits</li>';
+    return;
+  }
+
+  const commits = await response.json();
+
+  list.innerHTML = commits.map(commit => {
+    const title = commit.commit.message.split('\n')[0];
+    const link = commit.html_url;
+    return `<li>${links ? `<a href="${link}" target="_blank" rel="noopener">` : ''}${title}${links ? '</a>' : ''}</li>`;
+  }).join('');
+};
+
+const getworkflows = async (from, container, user, repo) => {
+  const loadingmessage = getsettings('loadingmessage', from) || 'loading…';
+  const workflowCount = getsettings('workflows', from) || '5';
+
+  const p = document.createElement('p');
+  p.className = 'github-include-workflowheader';
+  p.innerText = 'Latest workflows:';
+  container.appendChild(p);
+
+  const list = document.createElement('ul');
+  list.className = 'github-include-workflows';
+  list.innerHTML = `<li>${loadingmessage}</li>`;
+  container.appendChild(list);
+
+  const url = `https://api.github.com/repos/${user}/${repo}/actions/runs?per_page=${workflowCount}`;
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2026-03-10'
+    }
+  });
+
+  if (!response.ok) {
+    list.innerHTML = '<li>Failed to load workflows</li>';
+    return;
+  }
+
+  const data = await response.json();
+
+  list.innerHTML = data.workflow_runs.map(run => {
+    const statusIcon =
+        run.conclusion === 'success' ? '✅' :
+        run.conclusion === 'failure' ? '❌' :
+        run.conclusion === 'cancelled' ? '⚪' :
+        run.status === 'in_progress' ? '🟡' :
+        '⚫';
+
+    const statusText = run.conclusion || run.status;
+    const label = `${statusIcon} ${run.name} - ${statusText}`;
+
+    return `<li><a href="${run.html_url}" target="_blank" rel="noopener">${label}</a></li>`;
+  }).join('');
+};
 
 // Web Component
 class gitHubInclude extends HTMLElement {
@@ -145,6 +189,9 @@ class gitHubInclude extends HTMLElement {
       }
       if (getsettings('commits', this)) {
         getcommits(this, container, user, repo);
+      }
+      if (getsettings('workflows', this)) {
+        getworkflows(this, container, user, repo);
       }
     };
 

@@ -61,7 +61,7 @@ const getsettings = (setting, source) => {
     } else {
         return source.dataset[setting];
     }
-}
+};
 
 const createpages = (from,container,user,repo) => {
     let pageslink = document.createElement('a');
@@ -72,11 +72,12 @@ const createpages = (from,container,user,repo) => {
     pageslink.title = `View GitHub Pages for ${repo}`;
     pageslink.innerHTML = getsettings('pages', from) === '' ? 'Demo' : getsettings('pages', from);
     container.appendChild(pageslink);
-}
+};
 
+// eslint-disable-next-line no-unused-vars
 const getcommits = (from,container,user,repo) => {
     let links =  getsettings('links', from);
-    links = links === "true" ? true : false;
+    links = links === 'true' ? true : false;
     let commitheader = getsettings('commitheader', from) || 'Latest commits: ';
     let loadingmessage = getsettings('loadingmessage', from) || 'loading…';
     let p = document.createElement('p');
@@ -89,28 +90,28 @@ const getcommits = (from,container,user,repo) => {
     list.className = 'github-include-commits';
     container.appendChild(list);
     list.innerHTML = loadingmessage;
-    fetch(url, {"method": "GET"})
+    fetch(url, {'method': 'GET'})
         .then(response => response.text())
-        .then(str => new window.DOMParser().parseFromString(str, "text/xml"))
+        .then(str => new window.DOMParser().parseFromString(str, 'text/xml'))
         .then(data => {
-            let items = data.querySelectorAll("entry");
+            let items = data.querySelectorAll('entry');
             let out = '';
-            if (getsettings('commits', from) !== "-1") {
+            if (getsettings('commits', from) !== '-1') {
                 items = Array.from(items).slice(0, +getsettings('commits', from));
             }
             items.forEach(el => {
-                let title = el.querySelector("title").innerHTML;
-                let link = el.querySelector("link").getAttribute('href');
+                let title = el.querySelector('title').innerHTML;
+                let link = el.querySelector('link').getAttribute('href');
                 out += `<li>
                     ${links ? `<a href="${link}">` : ''}
                     ${title.trim()}
-                    ${links  ? `</a>` : ''}
+                    ${links  ? '</a>' : ''}
                 </li>`;
             });
             list.innerHTML = out;
         });
 
-}
+};
 
 // Web Component
 class gitHubInclude extends HTMLElement {
