@@ -51,7 +51,7 @@ export default defineConfig([
     languageOptions: {
       parserOptions: {
         ecmaVersion: 2022,
-        sourceType: 'module'
+        sourceType: 'script'
       },
       globals: {
         ...globals.browser,
