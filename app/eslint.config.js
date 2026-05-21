@@ -47,6 +47,25 @@ export default defineConfig([
     }
   },
   {
+    files: ['**/*.cjs'],
+    languageOptions: {
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: 'module'
+      },
+      globals: {
+        ...globals.browser,
+        ...globals.node
+      }
+    },
+    rules: {
+      semi: ['error', 'always'],
+      quotes: ['error', 'single'],
+      'no-unused-vars': 'warn',
+      'no-undef': 'warn'
+    }
+  },
+  {
     files: ['**/*.spec.ts'],
     languageOptions: {
       parser: tsParser,

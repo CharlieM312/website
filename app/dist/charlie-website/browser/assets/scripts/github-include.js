@@ -48,10 +48,13 @@ div > a:nth-of-type(1) {
   align-items: center;
   min-height: 2em;
 }
+.workflow-success { color: #2e7d32; margin-right: .5em; }
+.workflow-failure { color: #c62828; margin-right: .5em; }
+.workflow-in-progress { color: #f9a825; margin-right: .5em; }
+.workflow-neutral { color: #666; margin-right: .5em; }
+.workflow-label { color: inherit; }
 </style>`;
 
-let proxy = 'https://api.allorigins.win/raw?url=';
-let suffix = '/commits/main.atom';
 let user = '';
 let repo = '';
 
@@ -68,53 +71,120 @@ const createpages = (from,container,user,repo) => {
     pageslink.classList.add('github-include-pages');
     pageslink.href = `https://${user}.github.io/${repo}/`;
     pageslink.target = '_blank';
-    pageslink.rel = 'noopener';
+    pageslink.rel = 'noopener noreferrer';
     pageslink.title = `View GitHub Pages for ${repo}`;
     pageslink.innerHTML = getsettings('pages', from) === '' ? 'Demo' : getsettings('pages', from);
     container.appendChild(pageslink);
 };
 
-// eslint-disable-next-line no-unused-vars
-const getcommits = (from,container,user,repo) => {
-    let links =  getsettings('links', from);
-    links = links === 'true' ? true : false;
-    let commitheader = getsettings('commitheader', from) || 'Latest commits: ';
-    let loadingmessage = getsettings('loadingmessage', from) || 'loading…';
-    let p = document.createElement('p');
-    p.className = 'github-include-commitheader';
-    p.innerText = commitheader;
-    container.appendChild(p);
-    let origin = container.querySelector('a').href;
-    let url = `${proxy}${encodeURIComponent(origin+suffix)}`;
-    let list = document.createElement('ul');
-    list.className = 'github-include-commits';
-    container.appendChild(list);
-    list.innerHTML = loadingmessage;
-    fetch(url, {'method': 'GET'})
-        .then(response => response.text())
-        .then(str => new window.DOMParser().parseFromString(str, 'text/xml'))
-        .then(data => {
-            let items = data.querySelectorAll('entry');
-            let out = '';
-            if (getsettings('commits', from) !== '-1') {
-                items = Array.from(items).slice(0, +getsettings('commits', from));
-            }
-            items.forEach(el => {
-                let title = el.querySelector('title').innerHTML;
-                let link = el.querySelector('link').getAttribute('href');
-                out += `<li>
-                    ${links ? `<a href="${link}">` : ''}
-                    ${title.trim()}
-                    ${links  ? '</a>' : ''}
-                </li>`;
-            });
-            list.innerHTML = out;
-        });
+const getcommits = async (from, container, user, repo) => {
+  const links = getsettings('links', from) === 'true';
+  const commitheader = getsettings('commitheader', from) || 'Latest commits: ';
+  const loadingmessage = getsettings('loadingmessage', from) || 'loading…';
+  const commitCount = getsettings('commits', from) || '5';
 
+  const p = document.createElement('p');
+  p.className = 'github-include-commitheader';
+  p.innerText = commitheader;
+  container.appendChild(p);
+
+  const list = document.createElement('ul');
+  list.className = 'github-include-commits';
+  list.innerHTML = `<li>${loadingmessage}</li>`;
+  container.appendChild(list);
+
+  const url = `https://api.github.com/repos/${user}/${repo}/commits?per_page=${commitCount}`;
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2026-03-10'
+    }
+  });
+
+  if (!response.ok) {
+    list.innerHTML = '<li>Failed to load commits</li>';
+    return;
+  }
+
+  const commits = await response.json();
+
+  list.innerHTML = commits.map(commit => {
+    const title = commit.commit.message.split('\n')[0];
+    const link = commit.html_url;
+    return `<li>${links ? `<a href="${link}" target="_blank" rel="noopener noreferrer">` : ''}${title}${links ? '</a>' : ''}</li>`;
+  }).join('');
+};
+
+const getworkflows = async (from, container, user, repo) => {
+  const loadingmessage = getsettings('loadingmessage', from) || 'loading…';
+  const workflowCount = getsettings('workflows', from) || '5';
+
+  const p = document.createElement('p');
+  p.className = 'github-include-workflowheader';
+  p.innerText = 'Latest workflows:';
+  container.appendChild(p);
+
+  const list = document.createElement('ul');
+  list.className = 'github-include-workflows';
+  list.innerHTML = `<li>${loadingmessage}</li>`;
+  container.appendChild(list);
+
+  const url = `https://api.github.com/repos/${user}/${repo}/actions/runs?per_page=${workflowCount}`;
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2026-03-10'
+    }
+  });
+
+  if (!response.ok) {
+    list.innerHTML = '<li>Failed to load workflows</li>';
+    return;
+  }
+
+  const data = await response.json();
+
+  list.textContent = '';
+
+    // helper to pick an icon and class
+    const getStatus = run => {
+    if (run.conclusion === 'success') return {icon: '✅', cls: 'workflow-success'};
+    if (run.conclusion === 'failure') return {icon: '❌', cls: 'workflow-failure'};
+    if (run.conclusion === 'cancelled') return {icon: '⚪', cls: 'workflow-cancelled'};
+    if (run.status === 'in_progress') return {icon: '🟡', cls: 'workflow-in-progress'};
+    return {icon: '⚫', cls: 'workflow-neutral'};
+    };
+
+    data.workflow_runs.forEach(run => {
+    const { icon, cls } = getStatus(run);
+    const statusText = run.conclusion || run.status;
+
+    const li = document.createElement('li');
+    const a = document.createElement('a');
+    a.href = run.html_url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = cls;
+    iconSpan.textContent = icon; // safe
+
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'workflow-label';
+    // Use textContent so run.name cannot inject HTML
+    labelSpan.textContent = ` ${run.name} — ${statusText}`;
+
+    a.appendChild(iconSpan);
+    a.appendChild(labelSpan);
+    li.appendChild(a);
+    list.appendChild(li);
+    });
 };
 
 // Web Component
-class gitHubInclude extends HTMLElement {
+class GitHubInclude extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -147,9 +217,12 @@ class gitHubInclude extends HTMLElement {
       if (getsettings('commits', this)) {
         getcommits(this, container, user, repo);
       }
+      if (getsettings('workflows', this)) {
+        getworkflows(this, container, user, repo);
+      }
     };
 
     init();
   }
 }
-customElements.define('github-include', gitHubInclude);
+customElements.define('github-include', GitHubInclude);
