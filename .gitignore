@@ -4,3 +4,4 @@ app/coverage
 app/test-results
 .idea/
 .vscode/
+dist/

@@ -31,7 +31,7 @@ export default defineConfig([
     files: ['**/*.js'],
     languageOptions: {
       parserOptions: {
-        ecmaVersion: 2022,
+        ecmaVersion: 2025,
         sourceType: 'module'
       },
       globals: {
@@ -50,7 +50,7 @@ export default defineConfig([
     files: ['**/*.cjs'],
     languageOptions: {
       parserOptions: {
-        ecmaVersion: 2022,
+        ecmaVersion: 2025,
         sourceType: 'script'
       },
       globals: {
@@ -70,7 +70,7 @@ export default defineConfig([
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 2021,
+        ecmaVersion: 2025,
         sourceType: 'module'
       },
       globals: {
