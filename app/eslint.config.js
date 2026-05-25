@@ -2,15 +2,23 @@ import { defineConfig } from 'eslint/config';
 import globals from 'globals';
 import tsParser from '@typescript-eslint/parser';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export default defineConfig([
   {
     files: ['**/*.ts'],
+    ignores: ['**/*.spec.ts'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
         ecmaVersion: 2025,
-        sourceType: 'module'
+        sourceType: 'module',
+        project: './tsconfig.app.json',
+        tsconfigRootDir: __dirname,
+        createDefaultProgram: true
       },
       globals: {
         ...globals.browser,
@@ -23,8 +31,11 @@ export default defineConfig([
     rules: {
       semi: ['error', 'always'],
       quotes: ['error', 'single'],
-      '@typescript-eslint/no-unused-vars': 'warn',
-      'no-undef': 'warn'
+      'no-undef': 'error',
+      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/no-unsafe-member-access': 'error',
+      '@typescript-eslint/naming-convention': 'error',
+      '@typescript-eslint/unbound-method': 'error'
     }
   },
   {
@@ -71,7 +82,10 @@ export default defineConfig([
       parser: tsParser,
       parserOptions: {
         ecmaVersion: 2025,
-        sourceType: 'module'
+        sourceType: 'module',
+        project: './tsconfig.spec.json',
+        tsconfigRootDir: __dirname,
+        createDefaultProgram: true
       },
       globals: {
         ...globals.browser,
@@ -86,8 +100,10 @@ export default defineConfig([
     rules: {
       semi: ['error', 'always'],
       quotes: ['error', 'single'],
-      '@typescript-eslint/no-unused-vars': 'warn',
-      'no-undef': 'warn'
+      'no-undef': 'warn',
+      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/naming-convention': 'error',
+      '@typescript-eslint/unbound-method': 'error'
     }
   }
 ]);

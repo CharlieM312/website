@@ -25,7 +25,14 @@ jobs:
                   node-version-file: 'app/.nvmrc'
                   cache: 'npm'
                   cache-dependency-path: 'app/package-lock.json'
-
+            - name: Cache npm
+              uses: actions/cache@v5
+              with:
+                path: |
+                  ~/.npm
+                key: ${{ runner.os }}-node-${{ hashFiles('app/package-lock.json') }}
+                restore-keys: |
+                  ${{ runner.os }}-node-
             - name: Install dependencies
               run: |
                 cd app
@@ -48,23 +55,32 @@ jobs:
     lint:
       runs-on: ubuntu-latest
       steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-            node-version-file: 'app/.nvmrc'
-      - name: Install dependencies
-        run: |
-          cd app
-          npm ci
-      - name: Run ESLint
-        run: |
-          cd app
-          npm install -g @angular/cli
-          if ng lint --format summary; then
-            echo "✅ Linting passed - 0 problems" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ Linting failed - see errors above" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
+        - name: Checkout code
+          uses: actions/checkout@v6
+        - name: Set up Node.js
+          uses: actions/setup-node@v6
+          with:
+              node-version-file: 'app/.nvmrc'
+              cache: 'npm'
+              cache-dependency-path: 'app/package-lock.json'
+        - name: Cache npm
+          uses: actions/cache@v5
+          with:
+            path: |
+              ~/.npm
+            key: ${{ runner.os }}-node-${{ hashFiles('app/package-lock.json') }}
+            restore-keys: |
+              ${{ runner.os }}-node-
+        - name: Install dependencies
+          run: |
+            cd app
+            npm ci
+        - name: Run ESLint
+          run: |
+            cd app
+            if npx ng lint --format summary; then
+              echo "✅ Linting passed - 0 problems" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "❌ Linting failed - see errors above" >> $GITHUB_STEP_SUMMARY
+              exit 1
+            fi

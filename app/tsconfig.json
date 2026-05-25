@@ -11,6 +11,5 @@
     "typeRoots": ["node_modules/@types"],
     "types": [],
     "lib": ["es2022", "dom"]
-  },
-  "exclude": ["src/**/*.spec.ts"]
+  }
 }

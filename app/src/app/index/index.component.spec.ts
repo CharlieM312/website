@@ -1,3 +1,5 @@
+/// <reference types="jest" />
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { IndexComponent } from './index.component';
 import { AppModule } from '../app.module';

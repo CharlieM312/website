@@ -4,6 +4,14 @@ import { DarkModeService } from '../services/dark-mode/dark-mode.service';
 import { CookieService } from 'ngx-cookie-service';
 import * as L from 'leaflet';
 
+type RedrawableLayer = L.Layer & {
+  redraw: () => void;
+};
+
+function hasRedraw(layer: L.Layer): layer is RedrawableLayer {
+  return 'redraw' in layer && typeof (layer as { redraw?: unknown }).redraw === 'function';
+}
+
 @Component({
     selector: 'app-index',
     templateUrl: './index.component.html',
@@ -16,12 +24,12 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
 
     private subscriber?: Subscription;
     private map?: L.Map;
-    private london_markers: L.Marker[] = [];
-    private scottish_markers: L.Marker[] = [];
-    private northern_irish_markers: L.Marker[] = [];
-    private other_uk_markers: L.Marker[] = [];
-    private irish_markers: L.Marker[] = [];
-    private isle_of_man_markers: L.Marker[] = [];
+    private londonMarkers: L.Marker[] = [];
+    private scottishMarkers: L.Marker[] = [];
+    private northernIrishMarkers: L.Marker[] = [];
+    private otherUkMarkers: L.Marker[] = [];
+    private irishMarkers: L.Marker[] = [];
+    private isleOfManMarkers: L.Marker[] = [];
     private lightLayer?: L.TileLayer;
     private darkLayer?: L.TileLayer;
     londonAirportsVisible: boolean = true;
@@ -95,18 +103,18 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
     toggleLondonAirports(){
         // Logic to toggle London airports on the map
         if(!this.londonAirportsVisible){
-            this.london_markers.forEach(marker => {
+            this.londonMarkers.forEach(marker => {
                 this.map?.removeLayer(marker);
             });
         } else {
-            this.london_markers.forEach(marker => {
+            this.londonMarkers.forEach(marker => {
                 marker.addTo(this.map!);
             });
         }
 
         this.map?.eachLayer(layer => {
-            if ((layer as any).redraw) {
-                (layer as any).redraw();
+            if (hasRedraw(layer)) {
+                layer.redraw();
             }
         });
 
@@ -115,18 +123,18 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
 
     toggleScottishAirports(){
         if (!this.scottishAirportsVisible){
-            this.scottish_markers.forEach(marker => {
+            this.scottishMarkers.forEach(marker => {
                 this.map?.removeLayer(marker);
             });
         } else {
-            this.scottish_markers.forEach(marker => {
+            this.scottishMarkers.forEach(marker => {
                 marker.addTo(this.map!);
             });
         }
 
         this.map?.eachLayer(layer => {
-            if ((layer as any).redraw) {
-                (layer as any).redraw();
+            if (hasRedraw(layer)) {
+                layer.redraw();
             }
         });
 
@@ -136,11 +144,11 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
 
     toggleEnglishAirports(){
         if (!this.englishAirportsVisible){
-            this.other_uk_markers.forEach(marker => {
+            this.otherUkMarkers.forEach(marker => {
                 this.map?.removeLayer(marker);
             });
         } else {
-            this.other_uk_markers.forEach(marker => {
+            this.otherUkMarkers.forEach(marker => {
                 marker.addTo(this.map!);
             });
         }
@@ -148,11 +156,11 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
 
     toggleIsleOfManAirports(){
         if (!this.isleOfManAirportsVisible){
-            this.isle_of_man_markers.forEach(marker => {
+            this.isleOfManMarkers.forEach(marker => {
                 this.map?.removeLayer(marker);
             });
         } else {
-            this.isle_of_man_markers.forEach(marker => {
+            this.isleOfManMarkers.forEach(marker => {
                 marker.addTo(this.map!);
             });
         }
@@ -160,11 +168,11 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
 
     toggleNorthernIrishAirports(){
         if (!this.northernIrishAirportsVisible){
-            this.northern_irish_markers.forEach(marker => {
+            this.northernIrishMarkers.forEach(marker => {
                 this.map?.removeLayer(marker);
             });
         } else {
-            this.northern_irish_markers.forEach(marker => {
+            this.northernIrishMarkers.forEach(marker => {
                 marker.addTo(this.map!);
             });
         }
@@ -172,11 +180,11 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
 
     toggleIrishAirports(){
         if (!this.irishAirportsVisible){
-            this.irish_markers.forEach(marker => {
+            this.irishMarkers.forEach(marker => {
                 this.map?.removeLayer(marker);
             });
         } else {
-            this.irish_markers.forEach(marker => {
+            this.irishMarkers.forEach(marker => {
                 marker.addTo(this.map!);
             });
         }
@@ -185,48 +193,48 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
 
     private addAirports(){
         // London Airports
-        this.london_markers.push(L.marker([51.4706, -0.4619]).bindPopup('Heathrow').addTo(this.map!));
-        this.london_markers.push(L.marker([51.1481, -0.1903]).bindPopup('Gatwick').addTo(this.map!));
-        this.london_markers.push(L.marker([51.5053, 0.0553]).bindPopup('London City').addTo(this.map!));
+        this.londonMarkers.push(L.marker([51.4706, -0.4619]).bindPopup('Heathrow').addTo(this.map!));
+        this.londonMarkers.push(L.marker([51.1481, -0.1903]).bindPopup('Gatwick').addTo(this.map!));
+        this.londonMarkers.push(L.marker([51.5053, 0.0553]).bindPopup('London City').addTo(this.map!));
         // Other English Airports
-        this.other_uk_markers.push(L.marker([52.6758, 1.2828]).bindPopup('Norwich').addTo(this.map!));
-        this.other_uk_markers.push(L.marker([52.8294, -1.3321]).bindPopup('East Midlands').addTo(this.map!));
-        this.other_uk_markers.push(L.marker([51.5702, 0.6925]).bindPopup('Southend').addTo(this.map!));
-        this.other_uk_markers.push(L.marker([52.4539, -1.748]).bindPopup('Birmingham').addTo(this.map!));
-        this.other_uk_markers.push(L.marker([51.8850, 0.2350]).bindPopup('Stansted').addTo(this.map!));
-        this.other_uk_markers.push(L.marker([51.8747, -0.3683]).bindPopup('Luton').addTo(this.map!));
-        this.other_uk_markers.push(L.marker([51.3823, -2.7165]).bindPopup('Bristol').addTo(this.map!));
-        this.other_uk_markers.push(L.marker([50.6531, -1.1822]).bindPopup('Isle of Wight').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([52.6758, 1.2828]).bindPopup('Norwich').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([52.8294, -1.3321]).bindPopup('East Midlands').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([51.5702, 0.6925]).bindPopup('Southend').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([52.4539, -1.748]).bindPopup('Birmingham').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([51.8850, 0.2350]).bindPopup('Stansted').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([51.8747, -0.3683]).bindPopup('Luton').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([51.3823, -2.7165]).bindPopup('Bristol').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([50.6531, -1.1822]).bindPopup('Isle of Wight').addTo(this.map!));
 
         // North of England Airports
-        this.other_uk_markers.push(L.marker([53.8656, -1.6606]).bindPopup('Leeds Bradford').addTo(this.map!));
-        this.other_uk_markers.push(L.marker([53.3537, -2.2746]).bindPopup('Manchester').addTo(this.map!));
-        this.other_uk_markers.push(L.marker([55.0375, -1.6917]).bindPopup('Newcastle').addTo(this.map!));
-        this.other_uk_markers.push(L.marker([53.3336, -2.8947]).bindPopup('Liverpool').addTo(this.map!));
-        this.other_uk_markers.push(L.marker([53.4753, -1.0043]).bindPopup('Doncaster Sheffield').addTo(this.map!));
-        this.other_uk_markers.push(L.marker([53.7842, -1.2178]).bindPopup('Sherburn').addTo(this.map!));
-        this.other_uk_markers.push(L.marker([54.9375, -2.8092]).bindPopup('Carlisle').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([53.8656, -1.6606]).bindPopup('Leeds Bradford').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([53.3537, -2.2746]).bindPopup('Manchester').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([55.0375, -1.6917]).bindPopup('Newcastle').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([53.3336, -2.8947]).bindPopup('Liverpool').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([53.4753, -1.0043]).bindPopup('Doncaster Sheffield').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([53.7842, -1.2178]).bindPopup('Sherburn').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([54.9375, -2.8092]).bindPopup('Carlisle').addTo(this.map!));
         // Irish Airports
-        this.irish_markers.push(L.marker([53.3537, -6.2489]).bindPopup('Dublin').addTo(this.map!));
-        this.irish_markers.push(L.marker([53.4213, -8.9248]).bindPopup('Shannon').addTo(this.map!));
+        this.irishMarkers.push(L.marker([53.3537, -6.2489]).bindPopup('Dublin').addTo(this.map!));
+        this.irishMarkers.push(L.marker([53.4213, -8.9248]).bindPopup('Shannon').addTo(this.map!));
         // Northern Irish Airports
-        this.northern_irish_markers.push(L.marker([54.6186, -5.8724]).bindPopup('Belfast City').addTo(this.map!));
-        this.northern_irish_markers.push(L.marker([54.6575, -6.2158]).bindPopup('Belfast International').addTo(this.map!));
-        this.northern_irish_markers.push(L.marker([55.0428, -7.1619]).bindPopup('City of Derry').addTo(this.map!));
+        this.northernIrishMarkers.push(L.marker([54.6186, -5.8724]).bindPopup('Belfast City').addTo(this.map!));
+        this.northernIrishMarkers.push(L.marker([54.6575, -6.2158]).bindPopup('Belfast International').addTo(this.map!));
+        this.northernIrishMarkers.push(L.marker([55.0428, -7.1619]).bindPopup('City of Derry').addTo(this.map!));
         // Scotland Airports
-        this.scottish_markers.push(L.marker([57.2075, -2.1981]).bindPopup('Aberdeen').addTo(this.map!));
-        this.scottish_markers.push(L.marker([55.8719, -4.4331]).bindPopup('Glasgow').addTo(this.map!));
-        this.scottish_markers.push(L.marker([55.9500, -3.3725]).bindPopup('Edinburgh').addTo(this.map!));
-        this.scottish_markers.push(L.marker([57.5425, -4.0475]).bindPopup('Inverness').addTo(this.map!));
-        this.scottish_markers.push(L.marker([56.4525, -3.0258]).bindPopup('Dundee').addTo(this.map!));
-        this.scottish_markers.push(L.marker([59.881, -1.3000]).bindPopup('Sumburgh').addTo(this.map!));
-        this.scottish_markers.push(L.marker([58.958, -2.9450]).bindPopup('Kirkwall').addTo(this.map!));
-        this.scottish_markers.push(L.marker([57.2536, -5.8242]).bindPopup('Broadford Airfield').addTo(this.map!));
+        this.scottishMarkers.push(L.marker([57.2075, -2.1981]).bindPopup('Aberdeen').addTo(this.map!));
+        this.scottishMarkers.push(L.marker([55.8719, -4.4331]).bindPopup('Glasgow').addTo(this.map!));
+        this.scottishMarkers.push(L.marker([55.9500, -3.3725]).bindPopup('Edinburgh').addTo(this.map!));
+        this.scottishMarkers.push(L.marker([57.5425, -4.0475]).bindPopup('Inverness').addTo(this.map!));
+        this.scottishMarkers.push(L.marker([56.4525, -3.0258]).bindPopup('Dundee').addTo(this.map!));
+        this.scottishMarkers.push(L.marker([59.881, -1.3000]).bindPopup('Sumburgh').addTo(this.map!));
+        this.scottishMarkers.push(L.marker([58.958, -2.9450]).bindPopup('Kirkwall').addTo(this.map!));
+        this.scottishMarkers.push(L.marker([57.2536, -5.8242]).bindPopup('Broadford Airfield').addTo(this.map!));
         // Welsh Airports
         L.marker([51.3969, -3.3434]).bindPopup('Cardiff').addTo(this.map!);
         L.marker([51.6053, -4.0678]).bindPopup('Swansea').addTo(this.map!);
         // Isle of Man Airport
-        this.isle_of_man_markers.push(L.marker([54.0833, -4.623]).bindPopup('Isle of Man').addTo(this.map!));
+        this.isleOfManMarkers.push(L.marker([54.0833, -4.623]).bindPopup('Isle of Man').addTo(this.map!));
 
     }
 
