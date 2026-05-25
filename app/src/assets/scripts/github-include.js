@@ -5,14 +5,12 @@ let styles = `
     --background-color: #eee;
     --text-color: #111;
     --link-color: #369;
-}
-@media (prefers-color-scheme: dark) {    
-    :host {
-        --border-color: #111;
-        --background-color: #333;
-        --text-color: #ccc;
-        --link-color: #69c;
-    }
+} 
+:host-context(body.dark-mode) {
+    --border-color: #111;
+    --background-color: #333;
+    --text-color: #ccc;
+    --link-color: #69c;
 }
 div {
     font-family: sans-serif;

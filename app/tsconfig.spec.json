@@ -12,5 +12,6 @@
             "@angular/*/testing": ["node_modules/@angular/*/types/testing.d.ts"]
         }
     },
-    "include": ["src/app/**/*.spec.ts", "src/**/*.d.ts"]
+    "include": ["src/app/**/*.spec.ts", "src/**/*.d.ts"],
+    "exclude": ["node_modules"]
 }
