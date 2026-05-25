@@ -107,11 +107,84 @@ const getcommits = async (from, container, user, repo) => {
 
   const commits = await response.json();
 
-  list.innerHTML = commits.map(commit => {
+  list.textContent = '';
+
+  commits.forEach(commit => {
     const title = commit.commit.message.split('\n')[0];
     const link = commit.html_url;
-    return `<li>${links ? `<a href="${link}" target="_blank" rel="noopener noreferrer">` : ''}${title}${links ? '</a>' : ''}</li>`;
-  }).join('');
+
+    const li = document.createElement('li');
+
+    if (links) {
+      const a = document.createElement('a');
+      a.href = link;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      appendCommitTitle(a, title, user, repo);
+      li.appendChild(a);
+    } else {
+      appendCommitTitle(li, title, user, repo);
+    }
+
+    list.appendChild(li);
+  });
+};
+
+const appendnpmPackageLink = (li, packageName) => {
+  const npmLink = document.createElement('a');
+  npmLink.href = `https://www.npmjs.com/package/${packageName}`;
+  npmLink.target = '_blank';
+  npmLink.rel = 'noopener noreferrer';
+  npmLink.textContent = packageName;
+  li.appendChild(npmLink);
+};
+
+const appendCommitTitle = (container, title, user, repo) => {
+  const bumpMatch = title.match(
+    /^Bump\s+(@?[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)?)\s+from\s+\S+\s+to\s+\S+\s+in\s+.+?(?:\s+\(#\d+\))?$/i
+  );
+
+  if (bumpMatch) {
+    const packageName = bumpMatch[1];
+    container.appendChild(document.createTextNode('Bump '));
+    appendnpmPackageLink(container, packageName);
+
+    const rest = title.slice(`Bump ${packageName}`.length).trimStart();
+    if (rest) {
+      container.appendChild(document.createTextNode(' '));
+      appendLinkedCommitTitle(container, rest, user, repo);
+    }
+
+    return;
+  }
+
+  appendLinkedCommitTitle(container, title, user, repo);
+};
+
+const appendLinkedCommitTitle = (li, title, user, repo) => {
+  const prPattern = /\(#(\d+)\)/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = prPattern.exec(title)) !== null) {
+    if (match.index > lastIndex) {
+      li.appendChild(document.createTextNode(title.slice(lastIndex, match.index)));
+    }
+
+    const prNumber = match[1];
+    const prLink = document.createElement('a');
+    prLink.href = `https://github.com/${user}/${repo}/pull/${prNumber}`;
+    prLink.target = '_blank';
+    prLink.rel = 'noopener noreferrer';
+    prLink.textContent = `(#${prNumber})`;
+    li.appendChild(prLink);
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < title.length) {
+    li.appendChild(document.createTextNode(title.slice(lastIndex)));
+  }
 };
 
 const getworkflows = async (from, container, user, repo) => {
