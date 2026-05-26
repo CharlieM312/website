@@ -10,7 +10,7 @@ updates:
     schedule:
       interval: "weekly"
       day: "saturday"
-      time: "09:00"
+      time: "08:30"
       timezone: "Europe/London"
     versioning-strategy: increase
     groups:
