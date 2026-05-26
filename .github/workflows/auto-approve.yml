@@ -62,6 +62,7 @@ jobs:
       - name: Auto Approve
         run: gh pr review --approve "$PR_URL" --body "Auto-approving PR as production build passed."
         env:
+            PR_URL: ${{ github.event.pull_request.html_url }}
             GH_TOKEN: ${{ steps.generate-token.outputs.token }}
   merge:
     runs-on: ubuntu-latest
