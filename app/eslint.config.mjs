@@ -35,7 +35,10 @@ export default defineConfig([
       '@typescript-eslint/no-unused-vars': 'error',
       '@typescript-eslint/no-unsafe-member-access': 'error',
       '@typescript-eslint/naming-convention': 'error',
-      '@typescript-eslint/unbound-method': 'error'
+      '@typescript-eslint/unbound-method': 'error',
+      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
+      '@typescript-eslint/consistent-indexed-object-style': ['error', 'record']
     }
   },
   {
@@ -90,7 +93,6 @@ export default defineConfig([
       globals: {
         ...globals.browser,
         ...globals.node,
-        ...globals.jasmine,
         ...globals.jest
       }
     },

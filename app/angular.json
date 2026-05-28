@@ -45,12 +45,6 @@
             }
           }
         },
-        "test": {
-          "builder": "@angular-builders/jest:run",
-          "options": {
-            "configPath": "jest.config.cjs"
-          }
-        },
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
@@ -62,9 +56,10 @@
           "options": {
             "lintFilePatterns": [
               "src/**/*.ts",
+              "src/**/*.js",
               "src/**/*.html"
             ],
-            "eslintConfig": "eslint.config.js"
+            "eslintConfig": "eslint.config.mjs"
           }
         }
       }
