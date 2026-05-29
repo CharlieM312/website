@@ -17,8 +17,6 @@ jobs:
               uses: actions/setup-node@v6
               with:
                 node-version-file: 'app/.nvmrc'
-                cache: 'npm'
-                cache-dependency-path: 'app/package-lock.json'
             - name: Cache npm
               uses: actions/cache@v5
               with:
@@ -50,8 +48,6 @@ jobs:
           uses: actions/setup-node@v6
           with:
             node-version: ${{ matrix.node-version }}
-            cache: 'npm'
-            cache-dependency-path: 'app/package-lock.json'
         - name: Cache npm
           uses: actions/cache@v5
           with:
