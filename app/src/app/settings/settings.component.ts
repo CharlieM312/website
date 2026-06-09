@@ -17,32 +17,26 @@ export class SettingsComponent implements OnInit {
     private subscriber?: Subscription;
 
     ngOnInit() {
-        this.darkModeEnabled = this.darkModeService.isDarkModeEnabled();
-        
-        if (this.cookieService.get('darkMode') === 'true') {
+
+        const cookie = this.cookieService.get('darkMode');
+        if (cookie === 'true') {
             this.darkModeService.enableDarkMode();
-            const content = document.querySelector('.content');
-            document.body.classList.add('dark-mode');
-            if (content) content.classList.add('dark-mode');
-        } else if (this.cookieService.get('darkMode') === 'false') {
+        } else if (cookie === 'false') {
             this.darkModeService.disableDarkMode();
-            const content = document.querySelector('.content');
-            document.body.classList.remove('dark-mode');
-            if (content) content.classList.remove('dark-mode');
         }
 
         this.subscriber = this.darkModeService.darkMode$.subscribe(enabled => {
             this.darkModeEnabled = enabled;
-            const content = document.querySelector('.content');
+            const content = typeof document !== 'undefined' ? document.querySelector('.content') : null;
 
             if (enabled) {
                 document.body.classList.add('dark-mode');
                 if (content) content.classList.add('dark-mode');
-                this.cookieService.set('darkMode', 'true');
+                if (this.cookieService.get('darkMode') !== 'true') this.cookieService.set('darkMode', 'true');
             } else {
                 document.body.classList.remove('dark-mode');
                 if (content) content.classList.remove('dark-mode');
-                this.cookieService.set('darkMode', 'false');
+                if (this.cookieService.get('darkMode') !== 'false') this.cookieService.set('darkMode', 'false');
             }
 
         });
