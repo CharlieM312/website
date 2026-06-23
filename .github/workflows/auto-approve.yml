@@ -18,13 +18,13 @@ jobs:
           node-version: [22, 24, 26]
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Set up node
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
       - name: Cache npm
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: |
             ~/.npm
@@ -49,7 +49,7 @@ jobs:
     if: needs.production-build.result == 'success' && github.actor == 'dependabot[bot]'
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Generate a token
         id: generate-token
         uses: actions/create-github-app-token@v3
@@ -71,7 +71,7 @@ jobs:
     if: needs.auto-approve.result == 'success' && github.actor == 'dependabot[bot]'
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Generate a token
         id: generate-token
         uses: actions/create-github-app-token@v3
