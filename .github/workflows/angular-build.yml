@@ -30,7 +30,7 @@ jobs:
               run: |
                 npm install -g @angular/cli
                 cd app
-                npm install
+                yarn install
                 ng build
                 
     production-build:
@@ -61,5 +61,5 @@ jobs:
           run: |
               npm install -g @angular/cli
               cd app
-              npm install
+              yarn install
               npm run production
