@@ -10,7 +10,7 @@ jobs:
 
   production-build:
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
+    if: github.actor == 'dependabot[bot]' || github.actor == 'renovate[bot]'
     permissions:
       contents: read
     strategy:
@@ -35,7 +35,7 @@ jobs:
         run: |
             npm install -g @angular/cli
             cd app
-            npm install
+            yarn install
             npm run production
 
   auto-approve:
@@ -46,7 +46,7 @@ jobs:
       pull-requests: write
       contents: write
     needs: production-build
-    if: needs.production-build.result == 'success' && github.actor == 'dependabot[bot]'
+    if: needs.production-build.result == 'success' && (github.actor == 'dependabot[bot]' || github.actor == 'renovate[bot]')
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -68,7 +68,7 @@ jobs:
     permissions:
       pull-requests: write
       contents: write
-    if: needs.auto-approve.result == 'success' && github.actor == 'dependabot[bot]'
+    if: needs.auto-approve.result == 'success' && (github.actor == 'dependabot[bot]' || github.actor == 'renovate[bot]')
     steps:
       - name: Checkout
         uses: actions/checkout@v7
