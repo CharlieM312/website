@@ -42,7 +42,7 @@
     "jsdom": "^29.1.1",
     "ts-node": "^10.9.2",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.63.0"
+    "typescript-eslint": "8.64.0"
   },
   "allowScripts": {
     "esbuild@0.27.2": true,
