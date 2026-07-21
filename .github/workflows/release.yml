@@ -20,6 +20,8 @@ jobs:
     docker:
         runs-on: ubuntu-latest
         steps:
+            - name: Checkout
+              uses: actions/checkout@v7
             - name: Generate app token
               id: generate-token
               uses: actions/create-github-app-token@v3
@@ -58,9 +60,6 @@ jobs:
                     cache-to: type=gha,mode=max
                     context: .
                     file: ./production.Dockerfile
-            -   name: Checkout Repository
-                if: github.event_name == 'workflow_dispatch'
-                uses: actions/checkout@v6
             -
                 name: Create a Tag
                 if: github.event_name == 'workflow_dispatch'
