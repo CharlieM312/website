@@ -1,5 +1,6 @@
 node_modules
 app/.angular
+app/.yarn
 app/coverage
 app/test-results
 .idea/

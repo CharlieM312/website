@@ -23,18 +23,17 @@ jobs:
               uses: actions/setup-node@v7
               with:
                   node-version-file: 'app/.nvmrc'
-            - name: Cache npm
+            - name: Cache Yarn Packages
               uses: actions/cache@v6
               with:
-                path: |
-                  ~/.npm
-                key: ${{ runner.os }}-node-${{ hashFiles('app/package-lock.json') }}
+                path: app/.yarn/cache
+                key: ${{ runner.os }}-yarn-${{ hashFiles('app/yarn.lock') }}
                 restore-keys: |
-                  ${{ runner.os }}-node-
+                  ${{ runner.os }}-yarn-
             - name: Install dependencies
               run: |
                 cd app
-                yarn install --frozen-lockfile
+                yarn install --immutable
             - name: Run tests
               run: |
                 cd app
@@ -59,18 +58,17 @@ jobs:
           uses: actions/setup-node@v7
           with:
               node-version-file: 'app/.nvmrc'
-        - name: Cache npm
+        - name: Cache Yarn Packages
           uses: actions/cache@v6
           with:
-            path: |
-              ~/.npm
-            key: ${{ runner.os }}-node-${{ hashFiles('app/package-lock.json') }}
-            restore-keys: |
-              ${{ runner.os }}-node-
+              path: app/.yarn/cache
+              key: ${{ runner.os }}-yarn-${{ hashFiles('app/yarn.lock') }}
+              restore-keys: |
+                ${{ runner.os }}-yarn-
         - name: Install dependencies
           run: |
             cd app
-            yarn install --frozen-lockfile
+            yarn install --immutable
         - name: Run ESLint
           run: |
             cd app

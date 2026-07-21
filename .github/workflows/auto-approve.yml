@@ -10,7 +10,7 @@ jobs:
 
   production-build:
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]' || github.actor == 'renovate[bot]'
+    if: github.actor == 'renovate[bot]'
     permissions:
       contents: read
     strategy:
@@ -23,20 +23,18 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
-      - name: Cache npm
+      - name: Cache Yarn Packages
         uses: actions/cache@v6
         with:
-          path: |
-            ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('app/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+            path: app/.yarn/cache
+            key: ${{ runner.os }}-yarn-${{ hashFiles('app/yarn.lock') }}
+            restore-keys: |
+              ${{ runner.os }}-yarn-
       - name : Install + Build
         run: |
-            npm install -g @angular/cli
             cd app
-            yarn install
-            npm run production
+            yarn install --immutable
+            yarn production
 
   auto-approve:
     runs-on: ubuntu-latest
@@ -46,7 +44,7 @@ jobs:
       pull-requests: write
       contents: write
     needs: production-build
-    if: needs.production-build.result == 'success' && (github.actor == 'dependabot[bot]' || github.actor == 'renovate[bot]')
+    if: needs.production-build.result == 'success' && github.actor == 'renovate[bot]'
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -68,7 +66,7 @@ jobs:
     permissions:
       pull-requests: write
       contents: write
-    if: needs.auto-approve.result == 'success' && (github.actor == 'dependabot[bot]' || github.actor == 'renovate[bot]')
+    if: needs.auto-approve.result == 'success' && github.actor == 'renovate[bot]'
     steps:
       - name: Checkout
         uses: actions/checkout@v7
