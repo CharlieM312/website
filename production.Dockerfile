@@ -12,7 +12,7 @@ RUN yarn install --immutable
 COPY app/ ./
 RUN yarn production
 
-FROM nginx:1.27-alpine
+FROM nginx:1.31-alpine
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/app/dist/charlie-website/browser/. /usr/share/nginx/html/
