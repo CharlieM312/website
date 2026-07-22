@@ -23,20 +23,13 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v7
-            - name: Generate app token
-              id: generate-token
-              uses: actions/create-github-app-token@v3
-              with:
-                    client-id: ${{ secrets.CLIENT_ID }}
-                    private-key: |
-                        ${{ secrets.PRIVATE_KEY }}
             -
                 name: Login to GHCR
                 uses: docker/login-action@v4
                 with:
                     registry: ghcr.io
-                    username: ${{ steps.generate-token.outputs.app-slug }}[bot]
-                    password: ${{ steps.generate-token.outputs.token }}
+                    username: ${{ github.actor }}
+                    password: ${{ secrets.GITHUB_TOKEN }}
             -
                 name: Set up QEMU
                 uses: docker/setup-qemu-action@v4
