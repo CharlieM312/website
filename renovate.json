@@ -13,26 +13,26 @@
       "enabled": false
     },
     {
-      "matchPackagePatterns": [
-        "^@angular/",
-        "^angular-eslint"
-      ],
-      "groupName": "Angular ecosystem"
+      "groupName": "Angular ecosystem",
+      "matchPackageNames": [
+        "/^@angular//",
+        "/^angular-eslint/"
+      ]
     },
     {
-      "matchPackagePatterns": [
-        "^jest",
-        "^@types/jest"
-      ],
-      "groupName": "Jest testing suite"
+      "groupName": "Jest testing suite",
+      "matchPackageNames": [
+        "/^jest/",
+        "/^@types/jest/"
+      ]
     },
     {
-      "matchPackagePatterns": [
-        "^eslint",
-        "^typescript-eslint",
-        "^globals"
-      ],
-      "groupName": "ESLint tooling"
+      "groupName": "ESLint tooling",
+      "matchPackageNames": [
+        "/^eslint/",
+        "/^typescript-eslint/",
+        "/^globals/"
+      ]
     }
   ]
 }
