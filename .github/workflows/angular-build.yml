@@ -32,7 +32,7 @@ jobs:
                 
     production-build:
       runs-on: ubuntu-latest
-      if: github.actor != 'renovate[bot]'
+      if: github.actor != 'renovate[bot]' && github.actor != 'dependabot[bot]'
       permissions:
         contents: read
       strategy:
