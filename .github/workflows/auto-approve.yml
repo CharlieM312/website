@@ -10,7 +10,7 @@ jobs:
 
   production-build:
     runs-on: ubuntu-latest
-    if: github.actor == 'renovate[bot]'
+    if: github.actor == 'renovate[bot]' || github.actor == 'dependabot[bot]'
     permissions:
       contents: read
     strategy:
@@ -44,7 +44,7 @@ jobs:
       pull-requests: write
       contents: write
     needs: production-build
-    if: needs.production-build.result == 'success' && github.actor == 'renovate[bot]'
+    if: needs.production-build.result == 'success' && (github.actor == 'renovate[bot]' || github.actor == 'dependabot[bot]')
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -66,7 +66,7 @@ jobs:
     permissions:
       pull-requests: write
       contents: write
-    if: needs.auto-approve.result == 'success' && github.actor == 'renovate[bot]'
+    if: needs.auto-approve.result == 'success' && (github.actor == 'renovate[bot]' || github.actor == 'dependabot[bot]')
     steps:
       - name: Checkout
         uses: actions/checkout@v7
