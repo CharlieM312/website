@@ -1,4 +1,4 @@
-This project hosts my personal website https://charlie-meader.net
+This project hosts my personal website https://charlie-meader.com
 
 It currently uses Angular 22 and is hosted on Cloudflare
 
