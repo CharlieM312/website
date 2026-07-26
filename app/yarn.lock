@@ -354,7 +354,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@angular/build@npm:^22.0.7":
+"@angular/build@npm:^22.0.8":
   version: 22.0.8
   resolution: "@angular/build@npm:22.0.8"
   dependencies:
@@ -4385,7 +4385,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "charlie-website@workspace:."
   dependencies:
-    "@angular/build": "npm:^22.0.7"
+    "@angular/build": "npm:^22.0.8"
     "@angular/cli": "npm:22.0.8"
     "@angular/common": "npm:22.0.8"
     "@angular/compiler": "npm:22.0.8"
