@@ -36,11 +36,8 @@
     },
     {
       "groupName": "ESLint tooling",
-      "matchPackagePatterns": [
-        "/^eslint/",
-        "/^typescript-eslint/",
-        "/^globals/"
-      ]
+      "matchPackageNames": ["eslint", "globals"],
+      "matchPackagePatterns": ["^eslint-"]
     }
   ]
 }
