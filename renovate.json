@@ -14,6 +14,7 @@
   "dependencyDashboard": false,
   "postUpdateOptions": ["yarnDedupeHighest"],
   "internalChecksFilter": "strict",
+  "rangeStrategy": "bump",
   "packageRules": [
     {
       "matchUpdateTypes": ["major"],
