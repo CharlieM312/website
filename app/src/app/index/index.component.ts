@@ -205,6 +205,8 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
         this.otherUkMarkers.push(L.marker([51.8747, -0.3683]).bindPopup('Luton').addTo(this.map!));
         this.otherUkMarkers.push(L.marker([51.3823, -2.7165]).bindPopup('Bristol').addTo(this.map!));
         this.otherUkMarkers.push(L.marker([50.6531, -1.1822]).bindPopup('Isle of Wight').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([51.75, -1.5836]).bindPopup('RAF Brize Norton').addTo(this.map!));
+        this.otherUkMarkers.push(L.marker([52.205, 0.175]).bindPopup('Cambridge').addTo(this.map!));
 
         // North of England Airports
         this.otherUkMarkers.push(L.marker([53.8656, -1.6606]).bindPopup('Leeds Bradford').addTo(this.map!));
