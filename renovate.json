@@ -3,10 +3,17 @@
   "extends": [
     "config:recommended",
     "group:monorepos",
-    "group:recommended"
+    "group:recommended",
+    ":prHourlyLimit2",
+    ":semanticCommitTypeAll(build)",
+    "workarounds:all"
   ],
   "minimumReleaseAge": "3 days",
   "prCreation": "not-pending",
+  "prConcurrentLimit": 2,
+  "dependencyDashboard": false,
+  "postUpdateOptions": ["yarnDedupeHighest"],
+  "internalChecksFilter": "strict",
   "packageRules": [
     {
       "matchUpdateTypes": ["major"],
@@ -14,21 +21,21 @@
     },
     {
       "groupName": "Angular ecosystem",
-      "matchPackageNames": [
-        "/^@angular//",
+      "matchPackagePatterns": [
+        "/^@angular/",
         "/^angular-eslint/"
       ]
     },
     {
       "groupName": "Jest testing suite",
-      "matchPackageNames": [
+      "matchPackagePatterns": [
         "/^jest/",
         "/^@types/jest/"
       ]
     },
     {
       "groupName": "ESLint tooling",
-      "matchPackageNames": [
+      "matchPackagePatterns": [
         "/^eslint/",
         "/^typescript-eslint/",
         "/^globals/"
