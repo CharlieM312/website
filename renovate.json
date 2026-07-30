@@ -36,8 +36,7 @@
     },
     {
       "groupName": "ESLint tooling",
-      "matchPackageNames": ["eslint", "globals"],
-      "matchPackagePatterns": ["^eslint-"]
+      "matchPackageNames": ["eslint", "globals"]
     }
   ]
 }
