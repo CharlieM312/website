@@ -33,6 +33,7 @@ jobs:
       - name : Install + Build
         run: |
             cd app
+            corepack enable
             yarn install --immutable
             yarn production
 

@@ -33,6 +33,7 @@ jobs:
             - name: Install dependencies
               run: |
                 cd app
+                corepack enable
                 yarn install --immutable
             - name: Run tests
               run: |
@@ -68,6 +69,7 @@ jobs:
         - name: Install dependencies
           run: |
             cd app
+            corepack enable
             yarn install --immutable
         - name: Run ESLint
           run: |
