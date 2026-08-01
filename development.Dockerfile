@@ -4,7 +4,6 @@ FROM node:26.5.0
 WORKDIR /app
 
 RUN npm i -g corepack && corepack enable
-RUN corepack prepare yarn@4.17.1 --activate
 
 COPY app/package.json app/yarn.lock app/.yarnrc.yml ./
 COPY app/.yarn ./.yarn

@@ -80,3 +80,24 @@ jobs:
               echo "❌ Linting failed - see errors above" >> $GITHUB_STEP_SUMMARY
               exit 1
             fi
+    docker-build-test:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v7
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v4
+        - name: Build Docker image
+          uses: docker/build-push-action@v7
+          with:
+            context: .
+            file: ./production.Dockerfile
+            push: false
+            load: true
+            tags: website:test
+        - name: Smoke test container
+          run: |
+            docker run --rm -d --name website-test -p 8080:80 website:test
+            sleep 5
+            curl -f http://127.0.0.1:8080/ >/tmp/website.html
+            docker rm -f website-test
