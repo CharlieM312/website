@@ -6,11 +6,11 @@ on:
         branches:
             - main
         paths:
-        - 'app/**'
-        - 'nginx.conf'
-        - 'production.Dockerfile'
-        - 'development.Dockerfile'
-        - '.github/workflows/release.yml'
+            - 'app/**'
+            - 'nginx.conf'
+            - 'production.Dockerfile'
+            - 'development.Dockerfile'
+            - '.github/workflows/release.yml'
     
     workflow_dispatch:
         inputs:
