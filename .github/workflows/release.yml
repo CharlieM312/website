@@ -7,6 +7,8 @@ on:
             - main
         paths:
             - 'app/**'
+            - '!app/.yarn/install-state.gz'
+            - '!app/.yarn/cache/**'
             - 'nginx.conf'
             - 'production.Dockerfile'
             - 'development.Dockerfile'
