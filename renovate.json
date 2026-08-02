@@ -12,6 +12,7 @@
   "prCreation": "not-pending",
   "prConcurrentLimit": 2,
   "dependencyDashboard": false,
+  "configMigration": true,
   "postUpdateOptions": ["yarnDedupeHighest"],
   "internalChecksFilter": "strict",
   "rangeStrategy": "bump",
