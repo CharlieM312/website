@@ -23,22 +23,21 @@
     },
     {
       "groupName": "Angular ecosystem",
-      "matchPackagePatterns": [
-        "/^@angular/",
-        "/^angular-eslint/"
+      "matchPackageNames": [
+        "//^@angular//",
+        "//^angular-eslint//"
       ]
     },
     {
       "groupName": "Jest testing suite",
-      "matchPackagePatterns": [
-        "/^jest/",
-        "/^@types/jest/"
+      "matchPackageNames": [
+        "//^jest//",
+        "//^@types/jest//"
       ]
     },
     {
       "groupName": "ESLint tooling",
-      "matchPackageNames": ["eslint", "globals"],
-      "matchPackagePatterns": ["^eslint-"]
+      "matchPackageNames": ["eslint", "globals", "/^eslint-/"]
     }
   ]
 }
