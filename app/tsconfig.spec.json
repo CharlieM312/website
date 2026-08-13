@@ -4,7 +4,6 @@
         "outDir": "./out-tsc/spec",
         "types": ["jest"],
         "module": "commonjs",
-        "target": "es2024",
         "moduleResolution": "node16",
         "sourceMap": true,
         "paths": {
