@@ -130,6 +130,34 @@ const getcommits = async (from, container, user, repo) => {
   });
 };
 
+const getContributions = async (from, container, user, repo) => {
+  const contributor = getsettings('contributor', from);
+  const label = getsettings('contributorlabel', from) || 'My commits: ';
+  if (!contributor) return;
+
+  const p = document.createElement('p');
+  p.className = 'github-include-contributor';
+  p.textContent = `${label}loading…`;
+  container.appendChild(p);
+
+  const url = `https://api.github.com/repos/${user}/${repo}/commits?author=${contributor}&per_page=100`;
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2026-03-10'
+    }
+  });
+
+  if (!response.ok) {
+    p.textContent = `${label}unavailable`;
+    return;
+  }
+
+  const commits = await response.json();
+  p.textContent = `${label}${commits.length}`;
+};
+
 const appendnpmPackageLink = (li, packageName) => {
   const npmLink = document.createElement('a');
   npmLink.href = `https://www.npmjs.com/package/${packageName}`;
@@ -290,6 +318,9 @@ class GitHubInclude extends HTMLElement {
       }
       if (getsettings('workflows', this)) {
         getworkflows(this, container, user, repo);
+      }
+      if (getsettings('contributor', this)) {
+        getContributions(this, container, user, repo);
       }
     };
 

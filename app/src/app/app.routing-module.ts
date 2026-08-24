@@ -4,11 +4,13 @@ import { IndexComponent } from './index/index.component';
 import { AboutComponent } from './about/about.component';
 import { LayoutComponent } from './layout/layout.component';
 import { SettingsComponent } from './settings/settings.component';
+import { ContributionsComponent } from './contributions/contributions.component';
 
 const routes: Routes = [
     { path: '', component: LayoutComponent,
         children: [
             { path: 'about', component: AboutComponent},
+            { path: 'contributions', component: ContributionsComponent },
             { path: 'settings', component: SettingsComponent},
             { path: '', component: IndexComponent}
         ] 
