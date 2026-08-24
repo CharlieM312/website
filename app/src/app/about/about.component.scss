@@ -1,3 +1,41 @@
 h2 {
     display: flex;
 }
+
+.about-header {
+    display: flex;
+}
+
+.projects, .other-projects {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid #2d3748;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.project-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  margin-top: 0.75rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: red;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.project-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.project-card span {
+  font-weight: 600;
+}
+
+.flight-profile {
+    margin-top: 1rem;
+}
