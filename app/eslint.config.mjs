@@ -16,7 +16,7 @@ export default defineConfig([
       parserOptions: {
         ecmaVersion: 2025,
         sourceType: 'module',
-        project: './tsconfig.app.json',
+        projectService: true,
         tsconfigRootDir: __dirname,
         createDefaultProgram: true
       },
@@ -86,7 +86,7 @@ export default defineConfig([
       parserOptions: {
         ecmaVersion: 2025,
         sourceType: 'module',
-        project: './tsconfig.spec.json',
+        projectService: true,
         tsconfigRootDir: __dirname,
         createDefaultProgram: true
       },
