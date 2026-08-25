@@ -6,6 +6,7 @@ on:
         branches:
             - main
         paths:
+            - '!README.md'
             - 'app/**'
             - '!app/.yarn/install-state.gz'
             - '!app/.yarn/cache/**'
@@ -28,6 +29,7 @@ permissions:
 jobs:
     docker:
         runs-on: ubuntu-latest
+        if: github.actor != 'renovate[bot]'
         steps:
             - name: Checkout
               uses: actions/checkout@v7
