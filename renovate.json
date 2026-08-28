@@ -4,8 +4,10 @@
     "config:recommended",
     "group:monorepos",
     "group:recommended",
+    "monorepo:jest",
     ":prHourlyLimit2",
     ":semanticCommitTypeAll(build)",
+    "npm:unpublishSafe",
     "workarounds:all"
   ],
   "minimumReleaseAge": "3 days",
@@ -26,13 +28,6 @@
       "matchPackageNames": [
         "//^@angular//",
         "//^angular-eslint//"
-      ]
-    },
-    {
-      "groupName": "Jest testing suite",
-      "matchPackageNames": [
-        "//^jest//",
-        "//^@types/jest//"
       ]
     },
     {
