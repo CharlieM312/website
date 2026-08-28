@@ -7,6 +7,7 @@ on:
             - main
         paths:
             - '!README.md'
+            - '!renovate.json'
             - 'app/**'
             - '!app/.yarn/install-state.gz'
             - '!app/.yarn/cache/**'
