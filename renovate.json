@@ -7,7 +7,7 @@
     "monorepo:jest",
     ":prHourlyLimit2",
     ":semanticCommitTypeAll(build)",
-    "npm:unpublishSafe",
+    "security:minimumReleaseAgeNpm",
     "workarounds:all"
   ],
   "minimumReleaseAge": "3 days",
