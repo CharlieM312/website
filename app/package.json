@@ -12,12 +12,12 @@
     "lint:summary": "ng lint --format summary"
   },
   "dependencies": {
-    "@angular/common": "22.1.3",
-    "@angular/compiler": "22.1.3",
-    "@angular/core": "22.1.3",
-    "@angular/forms": "22.1.3",
-    "@angular/platform-browser": "22.1.3",
-    "@angular/router": "22.1.3",
+    "@angular/common": "22.1.4",
+    "@angular/compiler": "22.1.4",
+    "@angular/core": "22.1.4",
+    "@angular/forms": "22.1.4",
+    "@angular/platform-browser": "22.1.4",
+    "@angular/router": "22.1.4",
     "leaflet": "^1.9.4",
     "ngx-cookie-service": "^22.0.0",
     "rxjs": "^7.8.2",
@@ -27,7 +27,7 @@
   "devDependencies": {
     "@angular/build": "^22.1.6",
     "@angular/cli": "22.1.6",
-    "@angular/compiler-cli": "22.1.3",
+    "@angular/compiler-cli": "22.1.4",
     "@types/jest": "^30.0.0",
     "@types/leaflet": "^1.9.22",
     "@types/node": "^26.3.0",
