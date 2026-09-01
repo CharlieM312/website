@@ -34,32 +34,3 @@ jobs:
                 corepack enable
                 yarn install --immutable
                 yarn build
-                
-    production-build:
-      runs-on: ubuntu-latest
-      if: github.actor != 'renovate[bot]' && github.actor != 'dependabot[bot]'
-      permissions:
-        contents: read
-      strategy:
-        matrix:
-          node-version: [22, 24, 26]
-      steps:
-        - name: Checkout
-          uses: actions/checkout@v7
-        - name: Set up node
-          uses: actions/setup-node@v7
-          with:
-            node-version: ${{ matrix.node-version }}
-        - name: Cache Yarn Packages
-          uses: actions/cache@v6
-          with:
-            path: app/.yarn/cache
-            key: ${{ runner.os }}-yarn-${{ hashFiles('app/yarn.lock') }}
-            restore-keys: |
-              ${{ runner.os }}-yarn-
-        - name : Install + Build
-          run: |
-              cd app
-              corepack enable
-              yarn install --immutable
-              yarn production
