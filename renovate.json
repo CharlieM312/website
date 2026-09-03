@@ -20,7 +20,7 @@
   "rangeStrategy": "bump",
   "packageRules": [
     {
-      "matchDepNames": ["zone.js"],
+      "matchDepNames": ["zone.js", "typescript"],
       "enabled": false
     },
     {
