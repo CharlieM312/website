@@ -24,15 +24,15 @@
       "enabled": false
     },
     {
-      "matchPackageNames": ["//^@angular//","//^angular-eslint//"],
+      "matchPackageNames": ["/^@angular/","/^angular-eslint/"],
       "matchUpdateTypes": ["major"],
       "enabled": false
     },
     {
       "groupName": "Angular ecosystem",
       "matchPackageNames": [
-        "//^@angular//",
-        "//^angular-eslint//"
+        "/^@angular/",
+        "/^angular-eslint/"
       ]
     },
     {
