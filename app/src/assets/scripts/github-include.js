@@ -190,7 +190,7 @@ const appendCommitTitle = (container, title, user, repo) => {
   );
 
   const monorepoMatch = title.match(
-    /^Update\s+(@?[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)?)\s+monorepo\s+to\s+([~^]?\d+\.\d+\.\d+)(?:\s+in\s+.+?)?(?:\s+\(#\d+\))?$/i
+    /^Update\s+(@?[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)?)\s+monorepo\s+to\s+(v?[~^]?\d+\.\d+\.\d+)(?:\s+in\s+.+?)?(?:\s+\(#\d+\))?$/i
   );
 
   if (bumpMatch) {
