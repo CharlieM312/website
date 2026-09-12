@@ -237,6 +237,12 @@ const appendCommitTitle = (container, title, user, repo) => {
     appendnpmPackageLink(container, packageName);
     container.appendChild(document.createTextNode(` monorepo to ${version}`));
 
+    const rest = title.slice(`Update ${packageName} monorepo to ${version}`.length).trimStart();
+    if (rest) {
+      container.appendChild(document.createTextNode(' '));
+      appendLinkedCommitTitle(container, rest, user, repo);
+    }
+
     return;
   }  
 
