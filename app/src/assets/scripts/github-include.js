@@ -167,9 +167,30 @@ const appendnpmPackageLink = (li, packageName) => {
   li.appendChild(npmLink);
 };
 
+const appendNodeJsLink = (li, version) => {
+  const nodeLink = document.createElement('a');
+  nodeLink.href = `https://nodejs.org/en/download/archive/v${version}/`;
+  nodeLink.target = '_blank';
+  nodeLink.rel = 'noopener noreferrer';
+  nodeLink.textContent = ` v${version}`;
+  li.appendChild(nodeLink);
+};
+
 const appendCommitTitle = (container, title, user, repo) => {
   const bumpMatch = title.match(
     /^Bump\s+(@?[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)?)\s+from\s+\S+\s+to\s+\S+\s+in\s+.+?(?:\s+\(#\d+\))?$/i
+  );
+
+  const dependencyMatch = title.match(
+   /^Update dependency\s+(@?[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)?)\s+to\s+\S+(?:\s+in\s+.+?)?(?:\s+\(#\d+\))?$/i
+  );
+
+  const nodeJsMatch = title.match(
+    /^Update Node\.js to v(\d+\.\d+\.\d+)(?:\s+in\s+.+?)?(?:\s+\(#\d+\))?$/i
+  );
+
+  const monorepoMatch = title.match(
+    /^Update\s+(@?[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)?)\s+monorepo\s+to\s+([~^]?\d+\.\d+\.\d+)(?:\s+in\s+.+?)?(?:\s+\(#\d+\))?$/i
   );
 
   if (bumpMatch) {
@@ -184,7 +205,40 @@ const appendCommitTitle = (container, title, user, repo) => {
     }
 
     return;
-  }
+
+  } else if (dependencyMatch) {
+    const packageName = dependencyMatch[1];
+    container.appendChild(document.createTextNode('Update dependency '));
+    appendnpmPackageLink(container, packageName);
+
+    const rest = title.slice(`Update dependency ${packageName}`.length).trimStart();
+    if (rest) {
+      container.appendChild(document.createTextNode(' '));
+      appendLinkedCommitTitle(container, rest, user, repo);
+    }
+    return;
+  } else if (nodeJsMatch) {
+    container.appendChild(document.createTextNode('Update Node.js to'));
+    appendNodeJsLink(container, nodeJsMatch[1]);
+
+    const rest = title.slice(`Update Node.js to v${nodeJsMatch[1]}`.length).trimStart();
+    if (rest) {
+      container.appendChild(document.createTextNode(' '));
+      appendLinkedCommitTitle(container, rest, user, repo);
+    }
+
+    return;
+    
+   } else if (monorepoMatch) {
+    const packageName = monorepoMatch[1];
+    const version = monorepoMatch[2];
+
+    container.appendChild(document.createTextNode('Update '));
+    appendnpmPackageLink(container, packageName);
+    container.appendChild(document.createTextNode(` monorepo to ${version}`));
+
+    return;
+  }  
 
   appendLinkedCommitTitle(container, title, user, repo);
 };
