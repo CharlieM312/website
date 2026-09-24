@@ -176,6 +176,20 @@ const appendNodeJsLink = (li, version) => {
   li.appendChild(nodeLink);
 };
 
+const appendAngularReleaseLink = (li, version) => {
+  const angularLink = document.createElement('a');
+  const normalizedVersion = version.startsWith('v')
+    ? version
+    : `v${version}`;
+
+  angularLink.href =
+    `https://github.com/angular/angular/releases/tag/${normalizedVersion}`;
+  angularLink.target = '_blank';
+  angularLink.rel = 'noopener noreferrer';
+  angularLink.textContent = ` ${normalizedVersion}`;
+  li.appendChild(angularLink);
+};
+
 const appendCommitTitle = (container, title, user, repo) => {
   const bumpMatch = title.match(
     /^Bump\s+(@?[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)?)\s+from\s+\S+\s+to\s+\S+\s+in\s+.+?(?:\s+\(#\d+\))?$/i
@@ -191,6 +205,10 @@ const appendCommitTitle = (container, title, user, repo) => {
 
   const monorepoMatch = title.match(
     /^Update\s+(@?[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)?)\s+monorepo\s+to\s+(v?[~^]?\d+\.\d+\.\d+)(?:\s+in\s+.+?)?(?:\s+\(#\d+\))?$/i
+  );
+
+  const angularEcosystemMatch = title.match(
+    /^Update\s+Angular ecosystem\s+to\s+(v?\d+\.\d+\.\d+)(?:\s+in\s+.+?)?(?:\s+\(#\d+\))?$/i
   );
 
   if (bumpMatch) {
@@ -244,7 +262,24 @@ const appendCommitTitle = (container, title, user, repo) => {
     }
 
     return;
-  }  
+  } else if (angularEcosystemMatch) {
+    const version = angularEcosystemMatch[1];
+
+    container.appendChild(document.createTextNode('Update Angular ecosystem to '));
+    appendAngularReleaseLink(container, version);
+
+    const rest = title
+      .slice(`Update Angular ecosystem to ${version}`.length)
+      .trimStart();
+
+    if (rest) {
+      container.appendChild(document.createTextNode(' '));
+      appendLinkedCommitTitle(container, rest, user, repo);
+    }
+
+    return;  
+
+  }
 
   appendLinkedCommitTitle(container, title, user, repo);
 };
