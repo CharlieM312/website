@@ -2,6 +2,9 @@ name: Production Build
 
 on:
   workflow_call:
+    secrets:
+      CARTO_API_KEY:
+        required: true
 
 jobs:
     production-build:
@@ -26,6 +29,8 @@ jobs:
                     restore-keys: |
                         ${{ runner.os }}-yarn-
             - name : Install + Build
+              env:
+                CARTO_API_KEY: ${{ secrets.CARTO_API_KEY || 'placeholder_key' }}
               run: |
                     cd app
                     corepack enable

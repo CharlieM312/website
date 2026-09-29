@@ -32,7 +32,14 @@ if (process.argv.includes('--required') && !apiKey) {
 
 const outputDirectory = resolve('src/environments');
 await mkdir(outputDirectory, { recursive: true });
+const escapedApiKey = JSON.stringify(apiKey)
+    .slice(1, -1)
+    .replaceAll("'", "\\'");
+
 await writeFile(
     resolve(outputDirectory, 'environment.generated.ts'),
-    `export const environment = {\n    cartoApiKey: ${JSON.stringify(apiKey)}\n} as const;\n`
+    `export const environment = {
+    cartoApiKey: '${escapedApiKey}'
+} as const;
+`
 );
