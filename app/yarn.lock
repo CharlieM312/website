@@ -3149,6 +3149,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/jsdom@npm:^30.0.0":
+  version: 30.0.0
+  resolution: "@types/jsdom@npm:30.0.0"
+  dependencies:
+    "@types/node": "npm:*"
+    "@types/tough-cookie": "npm:*"
+    parse5: "npm:^8.0.0"
+    undici-types: "npm:^8.9.0"
+  checksum: 10c0/5489ff43ccaaaa473c1a0f10f623e6329a57234454203f557d0ff3bff28e51423b20219ff5c1c8f3d3552c862b36576c25340724b6e93d283c759b8db6868422
+  languageName: node
+  linkType: hard
+
 "@types/jsesc@npm:^2.5.0":
   version: 2.5.1
   resolution: "@types/jsesc@npm:2.5.1"
@@ -4007,6 +4019,7 @@ __metadata:
     "@angular/platform-browser": "npm:22.2.0"
     "@angular/router": "npm:22.2.0"
     "@types/jest": "npm:^30.0.0"
+    "@types/jsdom": "npm:^30.0.0"
     "@types/leaflet": "npm:^1.9.22"
     "@types/node": "npm:^26.6.3"
     angular-eslint: "npm:22.5.0"
@@ -7919,6 +7932,13 @@ __metadata:
   bin:
     uglifyjs: bin/uglifyjs
   checksum: 10c0/83b0a90eca35f778e07cad9622b80c448b6aad457c9ff8e568afed978212b42930a95f9e1be943a1ffa4258a3340fbb899f41461131c05bb1d0a9c303aed8479
+  languageName: node
+  linkType: hard
+
+"undici-types@npm:^8.9.0":
+  version: 8.11.2
+  resolution: "undici-types@npm:8.11.2"
+  checksum: 10c0/6baaa8cfa2a7862664958293708e386c8c53fb938da9e23b9df35c9943df06569973638b896b62abd6dfafebb65814a11523dc7e735cf9883ae5e855d20331ea
   languageName: node
   linkType: hard
 
