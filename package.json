@@ -5,7 +5,7 @@
   "scripts": {
     "start": "cd app && ng serve --project=charlie-website",
     "build": "cd app && ng build --project=charlie-website",
-    "production": "cd app && ng build --configuration production --project=charlie-website",
+    "production": "cd app && yarn production",
     "test": "cd app && ng test --project=charlie-website",
     "lint": "cd app && ng lint --project=charlie-website"
   }

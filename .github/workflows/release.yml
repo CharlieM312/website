@@ -66,6 +66,8 @@ jobs:
                     cache-to: type=gha,mode=max
                     context: .
                     file: ./production.Dockerfile
+                    secrets: |
+                        carto_api_key=${{ secrets.CARTO_API_KEY }}
             -
                 name: Create a Tag
                 if: github.event_name == 'workflow_dispatch'

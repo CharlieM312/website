@@ -29,6 +29,8 @@ jobs:
                   restore-keys: |
                     ${{ runner.os }}-yarn-
             - name : Install + Build
+              env:
+                CARTO_API_KEY: ${{ secrets.CARTO_API_KEY }}
               run: |
                 cd app
                 corepack enable

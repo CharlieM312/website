@@ -67,6 +67,8 @@ jobs:
               restore-keys: |
                 ${{ runner.os }}-yarn-
         - name: Install dependencies
+          env:
+            CARTO_API_KEY: ${{ secrets.CARTO_API_KEY || 'placeholder_key' }}
           run: |
             cd app
             corepack enable
@@ -74,6 +76,7 @@ jobs:
         - name: Run ESLint
           run: |
             cd app
+            node scripts/generate-environment.mjs
             if npx ng lint --format summary; then
               echo "✅ Linting passed - 0 problems" >> $GITHUB_STEP_SUMMARY
             else
@@ -95,6 +98,8 @@ jobs:
             push: false
             load: true
             tags: website:test
+            secrets: |
+              CARTO_API_KEY=${{ secrets.CARTO_API_KEY || 'placeholder_key' }}
         - name: Smoke test container
           run: |
             docker run --rm -d --name website-test -p 8080:80 website:test

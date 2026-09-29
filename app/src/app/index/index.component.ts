@@ -3,6 +3,7 @@ import { Subscription } from 'rxjs';
 import { DarkModeService } from '../services/dark-mode/dark-mode.service';
 import { CookieService } from 'ngx-cookie-service';
 import * as L from 'leaflet';
+import { environment } from '../../environments/environment.generated';
 
 type RedrawableLayer = L.Layer & {
   redraw: () => void;
@@ -86,7 +87,7 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
             attribution: '&copy; OpenStreetMap contributors'
         });
 
-        this.darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        this.darkLayer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?api_key=${encodeURIComponent(environment.cartoApiKey)}`, {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap & CartoDB'
         });

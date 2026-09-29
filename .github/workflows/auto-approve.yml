@@ -10,6 +10,8 @@ jobs:
 
   production-build:
     uses: ./.github/workflows/production-build.yml
+    secrets:
+      CARTO_API_KEY: ${{ secrets.CARTO_API_KEY }}
 
   auto-approve:
     runs-on: ubuntu-latest
