@@ -4,6 +4,8 @@ app/.angular
 app/.yarn/*
 !app/.yarn/install-state.gz
 app/coverage
+app/local.env
+app/src/environments/environment.generated.ts
 app/test-results
 .idea/
 .vscode/

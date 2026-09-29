@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "production": "ng build --configuration production",
-    "test": "jest",
+    "start": "node scripts/generate-environment.mjs --required && ng serve",
+    "build": "node scripts/generate-environment.mjs --required && ng build",
+    "production": "node scripts/generate-environment.mjs --required && ng build --configuration production",
+    "test": "node scripts/generate-environment.mjs && jest",
     "lint": "ng lint",
     "lint:summary": "ng lint --format summary"
   },
