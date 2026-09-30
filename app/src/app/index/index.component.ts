@@ -87,7 +87,7 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
             attribution: '&copy; OpenStreetMap contributors'
         });
 
-        this.darkLayer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?api_key=${encodeURIComponent(environment.cartoApiKey)}`, {
+        this.darkLayer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(environment.cartoApiKey)}`, {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap & CartoDB'
         });

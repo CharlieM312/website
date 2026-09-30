@@ -67,7 +67,7 @@ jobs:
                     context: .
                     file: ./production.Dockerfile
                     secrets: |
-                        carto_api_key=${{ secrets.CARTO_API_KEY }}
+                        CARTO_API_KEY=${{ secrets.CARTO_API_KEY }}
             -
                 name: Create a Tag
                 if: github.event_name == 'workflow_dispatch'
