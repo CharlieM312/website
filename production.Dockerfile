@@ -2,6 +2,7 @@ FROM node:26.11.1 AS build
 
 WORKDIR /app/app
 
+RUN npm i -g npm@12.2.0
 RUN npm i -g corepack && corepack enable
 
 COPY app/package.json app/yarn.lock app/.yarnrc.yml ./
