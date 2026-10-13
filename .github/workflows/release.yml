@@ -12,6 +12,7 @@ on:
             - '!app/.yarn/install-state.gz'
             - '!app/.yarn/cache/**'
             - '!app/src/assets/scripts/**'
+            - '.dockerignore'
             - 'nginx.conf'
             - 'production.Dockerfile'
             - 'development.Dockerfile'
