@@ -243,7 +243,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@angular/cli@npm:22.2.6":
+"@angular/cli@npm:^22.2.6":
   version: 22.2.6
   resolution: "@angular/cli@npm:22.2.6"
   dependencies:
@@ -3654,11 +3654,11 @@ __metadata:
   linkType: hard
 
 "baseline-browser-mapping@npm:^2.11.12":
-  version: 2.11.34
-  resolution: "baseline-browser-mapping@npm:2.11.34"
+  version: 2.11.35
+  resolution: "baseline-browser-mapping@npm:2.11.35"
   bin:
     baseline-browser-mapping: dist/cli.cjs
-  checksum: 10c0/294a4513440f4cacca2d84032ccff2dd284b429356af0c12574360d1e471ad1ab2383b101261193bec87891f90d2fea29cb75d3e54b2b69a060c6e726c433c58
+  checksum: 10c0/2f34ab2ed285a03860bc633cbf9cfea8974c37bb366d04e1adfa07a95ebec77a24d3daa2800d2d685b499aa9514700229b2cc7c6d49c0f5a363297e3382f7322
   languageName: node
   linkType: hard
 
@@ -3797,9 +3797,9 @@ __metadata:
   linkType: hard
 
 "caniuse-lite@npm:^1.0.30001809":
-  version: 1.0.30001820
-  resolution: "caniuse-lite@npm:1.0.30001820"
-  checksum: 10c0/b7752a246ba6b0d4a1cbede0d9beda1790ec5bd1d9270bc61d2c42e19f427cf79ba79cf3e0ae85fa80ef7cfe7fcfd8a3db41e0e3be6db94586379f4d595956d8
+  version: 1.0.30001822
+  resolution: "caniuse-lite@npm:1.0.30001822"
+  checksum: 10c0/8f888b97cb88c42ec654a056a872478d69cb30a1f2dec60d1f8024be7752c5930e7a043b299e3d2df555bc53d8f5c2072a9fc9a3253039f4a0ec1f3fbce0d8f1
   languageName: node
   linkType: hard
 
@@ -3848,7 +3848,7 @@ __metadata:
   resolution: "charlie-website@workspace:."
   dependencies:
     "@angular/build": "npm:^22.2.6"
-    "@angular/cli": "npm:22.2.6"
+    "@angular/cli": "npm:^22.2.6"
     "@angular/common": "npm:22.2.4"
     "@angular/compiler": "npm:22.2.4"
     "@angular/compiler-cli": "npm:22.2.4"

@@ -2,7 +2,7 @@ FROM --platform=$BUILDPLATFORM node:26.13.0-alpine AS build
 
 WORKDIR /app
 
-RUN npm i -g npm@12.2.0 corepack && corepack enable
+RUN npm i -g corepack && corepack enable
 
 COPY app/package.json app/yarn.lock app/.yarnrc.yml ./
 COPY app/.yarn ./.yarn
