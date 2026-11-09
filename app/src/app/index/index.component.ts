@@ -4,6 +4,7 @@ import { DarkModeService } from '../services/dark-mode/dark-mode.service';
 import { CookieService } from 'ngx-cookie-service';
 import * as L from 'leaflet';
 import { environment } from '../../environments/environment.generated';
+import { AirportFilterService } from '../services/filter/airport-filter.service';
 
 type RedrawableLayer = L.Layer & {
   redraw: () => void;
@@ -21,9 +22,9 @@ function hasRedraw(layer: L.Layer): layer is RedrawableLayer {
 })
 export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
 
-    constructor(private darkModeService: DarkModeService, private cookieService: CookieService) { }
+    constructor(private darkModeService: DarkModeService, private cookieService: CookieService, private airportFilterService: AirportFilterService) { }
 
-    private subscriber?: Subscription;
+    private subscriber = new Subscription();
     private map?: L.Map;
     private londonMarkers: L.Marker[] = [];
     private scottishMarkers: L.Marker[] = [];
@@ -45,22 +46,35 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
         if (this.cookieService.get('darkMode') === 'true') {
             this.darkModeService.enableDarkMode();
         }
-        this.subscriber = this.darkModeService.darkMode$.subscribe(enabled => {
-            const content = document.querySelector('.website-container');
+        this.subscriber.add(
+            this.darkModeService.darkMode$.subscribe(enabled => {
+                const content = document.querySelector('.website-container');
 
-            if (enabled) {
-                document.body.classList.add('dark-mode');
-                if (content) content.classList.add('dark-mode');
-                this.cookieService.set('darkMode', 'true');
-            } else {
-                document.body.classList.remove('dark-mode');
-                if (content) content.classList.remove('dark-mode');
-                this.cookieService.set('darkMode', 'false');
-            }
+                if (enabled) {
+                    document.body.classList.add('dark-mode');
+                    if (content) content.classList.add('dark-mode');
+                    this.cookieService.set('darkMode', 'true');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    if (content) content.classList.remove('dark-mode');
+                    this.cookieService.set('darkMode', 'false');
+                }
 
-            setTimeout(() => this.map?.invalidateSize(), 100);
+            })
+        );
 
-        });
+        this.subscriber.add(
+            this.airportFilterService.filters$.subscribe(filters => {
+                this.londonAirportsVisible = filters.london;
+                this.englishAirportsVisible = filters.english;
+                this.scottishAirportsVisible = filters.scottish;
+                this.isleOfManAirportsVisible = filters.isleOfMan;
+                this.northernIrishAirportsVisible = filters.northernIrish;
+                this.irishAirportsVisible = filters.irish;
+
+                this.applyAirportFilters();
+            })
+        );
         
     }
 
@@ -96,9 +110,17 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
 
         this.map.whenReady(() => this.map!.invalidateSize());
 
-        setTimeout(() => this.map?.invalidateSize(), 200);
-
         this.addAirports();
+        this.applyAirportFilters();
+    }
+
+    private applyAirportFilters() {
+        this.toggleLondonAirports();
+        this.toggleEnglishAirports();
+        this.toggleScottishAirports();
+        this.toggleIsleOfManAirports();
+        this.toggleNorthernIrishAirports();
+        this.toggleIrishAirports();
     }
 
     toggleLondonAirports(){
@@ -118,8 +140,6 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
                 layer.redraw();
             }
         });
-
-        setTimeout(() => this.map?.invalidateSize(true), 200);
     }
 
     toggleScottishAirports(){
@@ -138,8 +158,6 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
                 layer.redraw();
             }
         });
-
-        setTimeout(() => this.map?.invalidateSize(true), 200);
 
     }
 

@@ -15,8 +15,8 @@ const routes: Routes = [
             { path: '', component: IndexComponent}
         ] 
      },
-    { path: 'index', component: IndexComponent },
-    { path: '**', component: IndexComponent }
+    { path: 'index', redirectTo: '', pathMatch: 'full' },
+    { path: '**', redirectTo: '', pathMatch: 'full' }
 ];
 
 @NgModule({

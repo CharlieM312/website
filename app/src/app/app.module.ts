@@ -1,5 +1,6 @@
 import { CUSTOM_ELEMENTS_SCHEMA, NgModule} from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
+import { AirportFiltersComponent } from './airport-filters/airport-filters.component';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app.routing-module';
 import { ContributionsComponent } from './contributions/contributions.component';
@@ -12,7 +13,7 @@ import { SettingsComponent } from './settings/settings.component';
 import { FormsModule } from '@angular/forms';
 
 @NgModule({
-    declarations: [AppComponent, IndexComponent, HeaderComponent, AboutComponent, SideBarComponent, LayoutComponent, SettingsComponent, ContributionsComponent],
+    declarations: [AppComponent, IndexComponent, HeaderComponent, AboutComponent, SideBarComponent, LayoutComponent, SettingsComponent, ContributionsComponent, AirportFiltersComponent],
     imports: [BrowserModule, AppRoutingModule, FormsModule],
     bootstrap: [AppComponent],
     schemas: [CUSTOM_ELEMENTS_SCHEMA]
