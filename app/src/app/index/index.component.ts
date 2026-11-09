@@ -6,13 +6,6 @@ import * as L from 'leaflet';
 import { environment } from '../../environments/environment.generated';
 import { AirportFilterService } from '../services/filter/airport-filter.service';
 
-type RedrawableLayer = L.Layer & {
-  redraw: () => void;
-};
-
-function hasRedraw(layer: L.Layer): layer is RedrawableLayer {
-  return 'redraw' in layer && typeof (layer as { redraw?: unknown }).redraw === 'function';
-}
 
 @Component({
     selector: 'app-index',
@@ -134,12 +127,6 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
                 marker.addTo(this.map!);
             });
         }
-
-        this.map?.eachLayer(layer => {
-            if (hasRedraw(layer)) {
-                layer.redraw();
-            }
-        });
     }
 
     toggleScottishAirports(){
@@ -152,13 +139,6 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
                 marker.addTo(this.map!);
             });
         }
-
-        this.map?.eachLayer(layer => {
-            if (hasRedraw(layer)) {
-                layer.redraw();
-            }
-        });
-
     }
 
     toggleEnglishAirports(){
