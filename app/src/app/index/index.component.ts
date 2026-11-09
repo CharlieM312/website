@@ -24,7 +24,7 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
 
     constructor(private darkModeService: DarkModeService, private cookieService: CookieService, private airportFilterService: AirportFilterService) { }
 
-    private subscriber?: Subscription;
+    private subscriber = new Subscription();
     private map?: L.Map;
     private londonMarkers: L.Marker[] = [];
     private scottishMarkers: L.Marker[] = [];
@@ -46,36 +46,35 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
         if (this.cookieService.get('darkMode') === 'true') {
             this.darkModeService.enableDarkMode();
         }
-        this.subscriber = this.darkModeService.darkMode$.subscribe(enabled => {
-            const content = document.querySelector('.website-container');
+        this.subscriber.add(
+            this.darkModeService.darkMode$.subscribe(enabled => {
+                const content = document.querySelector('.website-container');
 
-            if (enabled) {
-                document.body.classList.add('dark-mode');
-                if (content) content.classList.add('dark-mode');
-                this.cookieService.set('darkMode', 'true');
-            } else {
-                document.body.classList.remove('dark-mode');
-                if (content) content.classList.remove('dark-mode');
-                this.cookieService.set('darkMode', 'false');
-            }
+                if (enabled) {
+                    document.body.classList.add('dark-mode');
+                    if (content) content.classList.add('dark-mode');
+                    this.cookieService.set('darkMode', 'true');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    if (content) content.classList.remove('dark-mode');
+                    this.cookieService.set('darkMode', 'false');
+                }
 
-        });
+            })
+        );
 
-        this.subscriber = this.airportFilterService.filters$.subscribe(filters => {
-            this.londonAirportsVisible = filters.london;
-            this.englishAirportsVisible = filters.english;
-            this.scottishAirportsVisible = filters.scottish;
-            this.isleOfManAirportsVisible = filters.isleOfMan;
-            this.northernIrishAirportsVisible = filters.northernIrish;
-            this.irishAirportsVisible = filters.irish;
+        this.subscriber.add(
+            this.airportFilterService.filters$.subscribe(filters => {
+                this.londonAirportsVisible = filters.london;
+                this.englishAirportsVisible = filters.english;
+                this.scottishAirportsVisible = filters.scottish;
+                this.isleOfManAirportsVisible = filters.isleOfMan;
+                this.northernIrishAirportsVisible = filters.northernIrish;
+                this.irishAirportsVisible = filters.irish;
 
-            this.toggleLondonAirports();
-            this.toggleEnglishAirports();
-            this.toggleScottishAirports();
-            this.toggleIsleOfManAirports();
-            this.toggleNorthernIrishAirports();
-            this.toggleIrishAirports();
-        });
+                this.applyAirportFilters();
+            })
+        );
         
     }
 
@@ -112,6 +111,16 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
         this.map.whenReady(() => this.map!.invalidateSize());
 
         this.addAirports();
+        this.applyAirportFilters();
+    }
+
+    private applyAirportFilters() {
+        this.toggleLondonAirports();
+        this.toggleEnglishAirports();
+        this.toggleScottishAirports();
+        this.toggleIsleOfManAirports();
+        this.toggleNorthernIrishAirports();
+        this.toggleIrishAirports();
     }
 
     toggleLondonAirports(){

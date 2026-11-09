@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Subscription } from 'rxjs';
 import {
   AirportFilterService,
   AirportFilterState
@@ -10,7 +11,7 @@ import {
   styleUrls: ['./airport-filters.component.scss'],
   standalone: false
 })
-export class AirportFiltersComponent {
+export class AirportFiltersComponent implements OnInit, OnDestroy {
   filters: AirportFilterState = {
     london: true,
     english: true,
@@ -20,7 +21,21 @@ export class AirportFiltersComponent {
     irish: true
   };
 
+  private subscription = new Subscription();
+
   constructor(private airportFilterService: AirportFilterService) {}
+
+  ngOnInit(): void {
+    this.subscription.add(
+      this.airportFilterService.filters$.subscribe(filters => {
+        this.filters = { ...filters };
+      })
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.subscription.unsubscribe();
+  }
 
   updateFilter(
     filter: keyof AirportFilterState,

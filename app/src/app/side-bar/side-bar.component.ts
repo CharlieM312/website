@@ -15,13 +15,19 @@ export class SideBarComponent {
 
     constructor(private router: Router) {
 
-    this.isIndexPage = this.router.url === '/';
+    this.isIndexPage = this.isHomeRoute(this.router.url);
     this.router.events
         .pipe(filter(event => event instanceof NavigationEnd))
         .subscribe(() => {
-        this.isIndexPage =
-            this.router.url === '/' || this.router.url === '/index';
+        this.isIndexPage = this.isHomeRoute(this.router.url);
         });
+    }
+
+    private isHomeRoute(url: string): boolean {
+        const tree = this.router.parseUrl(url);
+        const segments = tree.root.children['primary']?.segments ?? [];
+        const path = `/${segments.map(segment => segment.path).join('/')}`;
+        return path === '/' || path === '/index';
     }
 
 }
