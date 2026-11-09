@@ -2,15 +2,22 @@
     <h3>Side Bar</h3>
     <h4>Options</h4>
     <ul>
-        <li><a href="/">Home</a></li>
+        <li><a routerLink="/">Home</a></li>
         
-        <li><a href="/about">About</a></li>
+        <li><a routerLink="/about">About</a></li>
 
-        <li><a href="/contributions">Contributions</a></li>
+        <li><a routerLink="/contributions">Contributions</a></li>
     </ul>
+
+    @if (isIndexPage) {
+        <section class="map-settings">
+        <h4>Airport map settings</h4>
+        <app-airport-filters></app-airport-filters>
+    </section>
+    }
     <h4>Settings</h4>
     <ul>
-        <li><a href="/settings">Settings</a></li>
+        <li><a routerLink="/settings">Settings</a></li>
     </ul>
 
 </div>

@@ -4,6 +4,7 @@ import { DarkModeService } from '../services/dark-mode/dark-mode.service';
 import { CookieService } from 'ngx-cookie-service';
 import * as L from 'leaflet';
 import { environment } from '../../environments/environment.generated';
+import { AirportFilterService } from '../services/filter/airport-filter.service';
 
 type RedrawableLayer = L.Layer & {
   redraw: () => void;
@@ -21,7 +22,7 @@ function hasRedraw(layer: L.Layer): layer is RedrawableLayer {
 })
 export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
 
-    constructor(private darkModeService: DarkModeService, private cookieService: CookieService) { }
+    constructor(private darkModeService: DarkModeService, private cookieService: CookieService, private airportFilterService: AirportFilterService) { }
 
     private subscriber?: Subscription;
     private map?: L.Map;
@@ -58,8 +59,22 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.cookieService.set('darkMode', 'false');
             }
 
-            setTimeout(() => this.map?.invalidateSize(), 100);
+        });
 
+        this.subscriber = this.airportFilterService.filters$.subscribe(filters => {
+            this.londonAirportsVisible = filters.london;
+            this.englishAirportsVisible = filters.english;
+            this.scottishAirportsVisible = filters.scottish;
+            this.isleOfManAirportsVisible = filters.isleOfMan;
+            this.northernIrishAirportsVisible = filters.northernIrish;
+            this.irishAirportsVisible = filters.irish;
+
+            this.toggleLondonAirports();
+            this.toggleEnglishAirports();
+            this.toggleScottishAirports();
+            this.toggleIsleOfManAirports();
+            this.toggleNorthernIrishAirports();
+            this.toggleIrishAirports();
         });
         
     }
@@ -96,8 +111,6 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
 
         this.map.whenReady(() => this.map!.invalidateSize());
 
-        setTimeout(() => this.map?.invalidateSize(), 200);
-
         this.addAirports();
     }
 
@@ -118,8 +131,6 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
                 layer.redraw();
             }
         });
-
-        setTimeout(() => this.map?.invalidateSize(true), 200);
     }
 
     toggleScottishAirports(){
@@ -138,8 +149,6 @@ export class IndexComponent implements OnInit, AfterViewInit, OnDestroy {
                 layer.redraw();
             }
         });
-
-        setTimeout(() => this.map?.invalidateSize(true), 200);
 
     }
 

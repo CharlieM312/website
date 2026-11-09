@@ -1,0 +1,55 @@
+<label>
+  <input
+    id="londonAirports"
+    type="checkbox"
+    [checked]="filters.london"
+    (change)="updateFilter('london', $event)"
+  />
+  Show London Airports
+</label>
+<label>
+  <input
+    id="englishAirports"
+    type="checkbox"
+    [checked]="filters.english"
+    (change)="updateFilter('english', $event)"
+  />
+  Show English Airports
+</label>
+<label>
+  <input
+    id="scottishAirports"
+    type="checkbox"
+    [checked]="filters.scottish"
+    (change)="updateFilter('scottish', $event)"
+  />
+  Show Scottish Airports
+</label>
+<label>
+  <input
+    id="isleOfManAirports"
+    type="checkbox"
+    [checked]="filters.isleOfMan"
+    (change)="updateFilter('isleOfMan', $event)"
+  />
+  Show Isle of Man Airport
+</label>
+<label>
+  <input
+    id="northernIrishAirports"
+    type="checkbox"
+    [checked]="filters.northernIrish"
+    (change)="updateFilter('northernIrish', $event)"
+  />
+  Show Northern Irish Airports
+</label>
+
+<label>
+  <input
+    id="irishAirports"
+    type="checkbox"
+    [checked]="filters.irish"
+    (change)="updateFilter('irish', $event)"
+  />
+  Show Irish Airports
+</label>
