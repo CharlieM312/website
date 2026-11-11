@@ -6,7 +6,6 @@
 **/coverage
 **/test-results
 **/.yarn/cache
-**/local.env
 *.log
 .DS_Store
 .idea

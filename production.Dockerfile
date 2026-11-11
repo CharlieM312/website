@@ -10,7 +10,7 @@ RUN --mount=type=cache,target=/app/.yarn/cache \
     yarn install --immutable
 
 COPY app/ ./
-RUN --mount=type=secret,id=CARTO_API_KEY,target=/app/local.env,required=true \
+RUN --mount=type=secret,id=CARTO_API_KEY,target=/run/secrets/CARTO_API_KEY \
     --mount=type=cache,target=/app/.angular/cache \
     yarn production
 
