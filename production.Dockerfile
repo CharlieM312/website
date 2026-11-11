@@ -10,9 +10,9 @@ RUN --mount=type=cache,target=/app/.yarn/cache \
     yarn install --immutable
 
 COPY app/ ./
-RUN --mount=type=secret,id=CARTO_API_KEY \
+RUN --mount=type=secret,id=CARTO_API_KEY,target=/run/secrets/CARTO_API_KEY \
     --mount=type=cache,target=/app/.angular/cache \
-    sh -c 'export CARTO_API_KEY="$(cat /run/secrets/CARTO_API_KEY)" && yarn production'
+    yarn production
 
 FROM nginx:1.31-alpine
 
