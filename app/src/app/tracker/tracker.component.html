@@ -1,30 +1,114 @@
 <div class="tracker">
-    <h2>Log Airport Visit</h2>
+    @if (stats) {
+        <section class="stats-grid" aria-label="Travel statistics">
+            <div class="stat-card">
+                <span class="stat-value">{{ stats.totalVisits }}</span>
+                <span class="stat-label">Visits</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">{{ stats.uniqueAirports }}</span>
+                <span class="stat-label">Airports</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">{{ stats.uniqueCountries }}</span>
+                <span class="stat-label">Countries</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">{{ stats.totalDistanceKm }} km</span>
+                <span class="stat-label">{{ stats.totalDistanceMiles }} mi flown</span>
+            </div>
+        </section>
+    }
+
+    <h2>{{ editingVisitId !== null ? 'Edit Airport Visit' : 'Log Airport Visit' }}</h2>
+
+    @if (submitError) {
+        <div class="banner error-banner" role="alert">{{ submitError }}</div>
+    }
+    @if (submitSuccess) {
+        <div class="banner success-banner" role="status">{{ submitSuccess }}</div>
+    }
+
     <form (ngSubmit)="onSubmit()">
         <input type="password" name="apiToken" [(ngModel)]="apiToken" placeholder="API Secret Token" required>
         <hr>
-        <input type="text" name="username" [(ngModel)]="username" placeholder="Your Username (e.g., Charlie)" required>
-        <input type="text" name="iataCode" [(ngModel)]="iataCode" placeholder="IATA Code (e.g., LHR)" required>
-        <input type="text" name="airportName" [(ngModel)]="airportName" placeholder="Airport Name (Optional)">
-        <input type="date" name="visitDate" [(ngModel)]="visitDate" required>
+        <div class="form-row">
+            <input type="text" name="username" [(ngModel)]="username" placeholder="Username (e.g., CharlieM312)" required>
+            <input type="date" name="visitDate" [(ngModel)]="visitDate" required>
+        </div>
+        <div class="form-row">
+            <input type="text" name="originIata" [(ngModel)]="originIata" maxlength="3" class="iata-input" placeholder="Origin IATA (Optional, e.g., LHR)">
+            <input type="text" name="iataCode" [(ngModel)]="iataCode" maxlength="3" class="iata-input" placeholder="Destination / Visited IATA (e.g., HAM)" required>
+        </div>
+        <div class="form-row">
+            <input type="text" name="flightNumber" [(ngModel)]="flightNumber" placeholder="Flight # (Optional, e.g., BA968)">
+            <input type="text" name="airportName" [(ngModel)]="airportName" placeholder="Airport Name (Auto-filled if blank)">
+        </div>
         <input type="text" name="notes" [(ngModel)]="notes" placeholder="Notes (Optional)">
-        <button type="submit">Add Visit</button>
+
+        <div class="form-actions">
+            <button type="submit" [disabled]="submitting">
+                {{ editingVisitId !== null ? 'Update Visit' : 'Add Visit' }}
+            </button>
+            @if (editingVisitId !== null) {
+                <button type="button" class="secondary" (click)="cancelEdit()">Cancel</button>
+            }
+        </div>
     </form>
 
-    <h2>Logged Visits</h2>
+    <h2>Logged Visits ({{ visits.length }})</h2>
+    <form class="filter-form" (ngSubmit)="loadUserVisits()">
+        <input type="text" name="filterUsername" [(ngModel)]="filterUsername" placeholder="Filter by Username (e.g., CharlieM312)">
+        <div class="filter-actions">
+            <button type="submit">Load User Visits</button>
+            <button type="button" class="secondary" (click)="clearUserFilter()">Show All</button>
+        </div>
+    </form>
+
     @if (loading) {
-        <div>Loading...</div>
+        <div class="status-text">Loading...</div>
     } @else if (error) {
-        <div>{{ error }}</div>
+        <div class="banner error-banner">{{ error }}</div>
     } @else if (visits.length === 0) {
-        <p>No visits logged yet.</p>
+        <p class="status-text">No visits logged yet.</p>
     } @else {
-        @for (v of visits; track $index) {
+        @for (v of visits; track v.id || $index) {
             <div class="visit-card">
-                <strong>{{ v.iataCode }}</strong> ({{ v.airportName }})<br>
-                <small>Visited by: {{ v.username }} on {{ v.visitDate }}</small>
+                <div class="visit-header">
+                    <div class="route-badges">
+                        @if (v.originIata) {
+                            <span class="iata-badge origin">{{ v.originIata }}</span>
+                            <span class="route-arrow">&rarr;</span>
+                        }
+                        <span class="iata-badge">{{ v.iataCode }}</span>
+                        @if (v.flightNumber) {
+                            <span class="meta-pill flight-pill">{{ v.flightNumber }}</span>
+                        }
+                        @if (v.distanceKm !== null) {
+                            <span class="meta-pill distance-pill">{{ v.distanceKm }} km</span>
+                        }
+                    </div>
+                    <div class="card-actions">
+                        <button type="button" class="small-btn" (click)="startEdit(v)">Edit</button>
+                        @if (v.id) {
+                            <button type="button" class="small-btn danger" (click)="deleteVisit(v.id)">Delete</button>
+                        }
+                    </div>
+                </div>
+
+                <div class="airport-details">
+                    <strong>{{ v.airportName }}</strong>
+                    @if (v.city || v.country) {
+                        <span class="location-text">
+                            &mdash; {{ v.city }}{{ v.city && v.country ? ', ' : '' }}{{ v.country }}
+                        </span>
+                    }
+                </div>
+
+                <small class="visit-meta">Visited by: {{ v.username }} on {{ v.visitDate }}</small>
+
                 @if (v.notes) {
-                    <p>{{ v.notes }}</p>
+                    <p class="visit-notes">{{ v.notes }}</p>
                 }
             </div>
         }
