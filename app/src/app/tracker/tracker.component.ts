@@ -19,12 +19,37 @@ export interface VisitItem {
     notes: string;
 }
 
+export interface MostVisitedAirport {
+    iataCode: string;
+    airportName: string;
+    city: string;
+    country: string;
+    visitCount: number;
+}
+
+export interface CountryVisitedStat {
+    country: string;
+    visitCount: number;
+    uniqueAirports: number;
+}
+
+export interface YearVisitStat {
+    year: string;
+    visitCount: number;
+    uniqueAirports: number;
+}
+
 export interface TravelStats {
     totalVisits: number;
     uniqueAirports: number;
     uniqueCountries: number;
     totalDistanceKm: number;
     totalDistanceMiles: number;
+    firstVisitDate?: string;
+    lastVisitDate?: string;
+    mostVisitedAirports?: MostVisitedAirport[];
+    countriesVisited?: CountryVisitedStat[];
+    visitsByYear?: YearVisitStat[];
 }
 
 @Component({
@@ -38,7 +63,11 @@ export class TrackerComponent implements OnInit, OnDestroy {
     private readonly statsUrl = '/api/stats';
     private readonly loginUrl = '/api/login';
     private readonly logoutUrl = '/api/logout';
+    private readonly twoFaStatusUrl = '/api/2fa/status';
     private readonly totpSetupUrl = '/api/2fa/totp/setup';
+    private readonly totpVerifyUrl = '/api/2fa/totp/verify';
+    private readonly totpDisableUrl = '/api/2fa/totp';
+    private readonly webauthnDisableUrl = '/api/webauthn';
     private readonly webauthnRegisterOptionsUrl = '/api/webauthn/register-options';
     private readonly webauthnRegisterVerifyUrl = '/api/webauthn/register-verify';
     private readonly webauthnLoginOptionsUrl = '/api/webauthn/login-options';
@@ -54,6 +83,10 @@ export class TrackerComponent implements OnInit, OnDestroy {
     loggedInUser = '';
 
     showSecuritySettings = false;
+    totpEnabled = false;
+    webauthnEnabled = false;
+    totpPendingVerification = false;
+    totpVerifyCode = '';
     totpSetupSecret = '';
     totpSetupUri = '';
     totpQrDataUrl = '';
@@ -158,6 +191,10 @@ export class TrackerComponent implements OnInit, OnDestroy {
         this.loggedInUser = '';
         this.editingVisitId = null;
         this.showSecuritySettings = false;
+        this.totpEnabled = false;
+        this.webauthnEnabled = false;
+        this.totpPendingVerification = false;
+        this.totpVerifyCode = '';
         this.totpSetupSecret = '';
         this.totpSetupUri = '';
         this.totpQrDataUrl = '';
@@ -347,12 +384,44 @@ export class TrackerComponent implements OnInit, OnDestroy {
         }
     }
 
+    toggleSecuritySettings(): void {
+        this.showSecuritySettings = !this.showSecuritySettings;
+        if (this.showSecuritySettings) {
+            void this.loadTwoFaStatus();
+        }
+    }
+
+    async loadTwoFaStatus(): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken) return;
+
+        try {
+            const res = await fetch(this.twoFaStatusUrl, {
+                headers: this.getRequestHeaders({
+                    ['Authorization']: `Bearer ${currentToken}`
+                })
+            });
+            if (!res.ok) return;
+            this.captureBookmark(res);
+
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== currentToken) return;
+            this.totpEnabled = Boolean(body['totp_enabled']);
+            this.webauthnEnabled = Boolean(body['webauthn_enabled']);
+        } catch {
+            // Non-blocking status check
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
     async setupTotp(): Promise<void> {
         const setupToken = this.sessionToken;
         if (!setupToken) return;
         this.securityError = '';
         this.securityMessage = '';
         this.totpQrDataUrl = '';
+        this.totpVerifyCode = '';
 
         try {
             const res = await fetch(this.totpSetupUrl, {
@@ -372,8 +441,9 @@ export class TrackerComponent implements OnInit, OnDestroy {
                         ? body['otpauth_url']
                         : `otpauth://totp/AirportTracker:${encodeURIComponent(this.loggedInUser || 'User')}?secret=${this.totpSetupSecret}&issuer=AirportTracker`;
                 this.totpQrDataUrl = generateQrCodeDataUrl(this.totpSetupUri);
+                this.totpPendingVerification = true;
                 this.securityMessage =
-                    'Scan the QR code below or enter the secret key in Microsoft Authenticator (or Yubico Authenticator).';
+                    'Scan the QR code below, then enter a 6-digit code from your app to verify and enable 2FA.';
             } else {
                 this.securityError =
                     typeof body['error'] === 'string'
@@ -382,6 +452,127 @@ export class TrackerComponent implements OnInit, OnDestroy {
             }
         } catch {
             this.securityError = 'Network error while setting up Authenticator 2FA.';
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async verifyTotp(): Promise<void> {
+        const verifyToken = this.sessionToken;
+        const code = this.totpVerifyCode.trim();
+        if (!verifyToken) return;
+        if (!code) {
+            this.securityError = 'Enter the 6-digit code from your Authenticator app to verify.';
+            this.cdr.detectChanges();
+            return;
+        }
+
+        this.securityError = '';
+        this.securityMessage = '';
+
+        try {
+            const res = await fetch(this.totpVerifyUrl, {
+                method: 'POST',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json',
+                    ['Authorization']: `Bearer ${verifyToken}`
+                }),
+                body: JSON.stringify({ code })
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== verifyToken) return;
+
+            if (res.ok) {
+                this.totpEnabled = true;
+                this.totpPendingVerification = false;
+                this.totpVerifyCode = '';
+                this.totpSetupSecret = '';
+                this.totpSetupUri = '';
+                this.totpQrDataUrl = '';
+                this.securityMessage = 'Microsoft Authenticator 2FA verified and enabled!';
+            } else {
+                this.securityError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : 'Invalid verification code. Please try again.';
+            }
+        } catch {
+            this.securityError = 'Network error while verifying Authenticator code.';
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async disableTotp(): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken) return;
+        this.securityError = '';
+        this.securityMessage = '';
+
+        try {
+            const res = await fetch(this.totpDisableUrl, {
+                method: 'DELETE',
+                headers: this.getRequestHeaders({
+                    ['Authorization']: `Bearer ${currentToken}`
+                })
+            });
+
+            this.captureBookmark(res);
+            if (this.sessionToken !== currentToken) return;
+
+            if (res.ok) {
+                this.totpEnabled = false;
+                this.totpPendingVerification = false;
+                this.totpVerifyCode = '';
+                this.totpSetupSecret = '';
+                this.totpSetupUri = '';
+                this.totpQrDataUrl = '';
+                this.securityMessage = 'Authenticator 2FA has been disabled.';
+            } else {
+                const body = (await res.json()) as Record<string, unknown>;
+                this.securityError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : 'Failed to disable Authenticator 2FA.';
+            }
+        } catch {
+            this.securityError = 'Network error while disabling Authenticator 2FA.';
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async disableWebAuthn(): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken) return;
+        this.securityError = '';
+        this.securityMessage = '';
+
+        try {
+            const res = await fetch(this.webauthnDisableUrl, {
+                method: 'DELETE',
+                headers: this.getRequestHeaders({
+                    ['Authorization']: `Bearer ${currentToken}`
+                })
+            });
+
+            this.captureBookmark(res);
+            if (this.sessionToken !== currentToken) return;
+
+            if (res.ok) {
+                this.webauthnEnabled = false;
+                this.securityMessage = 'YubiKey / Passkey has been removed.';
+            } else {
+                const body = (await res.json()) as Record<string, unknown>;
+                this.securityError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : 'Failed to remove YubiKey.';
+            }
+        } catch {
+            this.securityError = 'Network error while removing YubiKey.';
         } finally {
             this.cdr.detectChanges();
         }
@@ -436,7 +627,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
                         name: this.loggedInUser,
                         displayName: this.loggedInUser
                     },
-                    pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
+                    pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
                     authenticatorSelection: {
                         userVerification: 'preferred'
                     },
@@ -472,6 +663,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
 
             const verifyBody = (await verifyRes.json()) as Record<string, unknown>;
             if (verifyRes.ok) {
+                this.webauthnEnabled = true;
                 this.securityMessage = 'YubiKey registered! You can now sign in with your security key.';
             } else {
                 this.securityError =
@@ -549,13 +741,55 @@ export class TrackerComponent implements OnInit, OnDestroy {
             this.captureBookmark(res);
 
             const raw = (await res.json()) as Record<string, unknown>;
-            this.stats = {
+            const rawMostVisited = Array.isArray(raw['most_visited_airports'])
+                ? (raw['most_visited_airports'] as Record<string, unknown>[])
+                : undefined;
+            const rawCountries = Array.isArray(raw['countries_visited'])
+                ? (raw['countries_visited'] as Record<string, unknown>[])
+                : undefined;
+            const rawYears = Array.isArray(raw['visits_by_year'])
+                ? (raw['visits_by_year'] as Record<string, unknown>[])
+                : undefined;
+
+            const mappedStats: TravelStats = {
                 totalVisits: Number(raw['total_visits'] ?? 0),
                 uniqueAirports: Number(raw['unique_airports'] ?? 0),
                 uniqueCountries: Number(raw['unique_countries'] ?? 0),
                 totalDistanceKm: Number(raw['total_distance_km'] ?? 0),
                 totalDistanceMiles: Number(raw['total_distance_miles'] ?? 0)
             };
+
+            if (typeof raw['first_visit_date'] === 'string') {
+                mappedStats.firstVisitDate = raw['first_visit_date'];
+            }
+            if (typeof raw['last_visit_date'] === 'string') {
+                mappedStats.lastVisitDate = raw['last_visit_date'];
+            }
+            if (rawMostVisited) {
+                mappedStats.mostVisitedAirports = rawMostVisited.map(a => ({
+                    iataCode: typeof a['iata_code'] === 'string' ? a['iata_code'] : '',
+                    airportName: typeof a['airport_name'] === 'string' ? a['airport_name'] : '',
+                    city: typeof a['city'] === 'string' ? a['city'] : '',
+                    country: typeof a['country'] === 'string' ? a['country'] : '',
+                    visitCount: Number(a['visit_count'] ?? 0)
+                }));
+            }
+            if (rawCountries) {
+                mappedStats.countriesVisited = rawCountries.map(c => ({
+                    country: typeof c['country'] === 'string' ? c['country'] : '',
+                    visitCount: Number(c['visit_count'] ?? 0),
+                    uniqueAirports: Number(c['unique_airports'] ?? 0)
+                }));
+            }
+            if (rawYears) {
+                mappedStats.visitsByYear = rawYears.map(y => ({
+                    year: typeof y['year'] === 'string' ? y['year'] : String(y['year'] ?? ''),
+                    visitCount: Number(y['visit_count'] ?? 0),
+                    uniqueAirports: Number(y['unique_airports'] ?? 0)
+                }));
+            }
+
+            this.stats = mappedStats;
         } catch {
             // Stats are non-blocking; ignore errors if endpoint is unavailable
         } finally {
