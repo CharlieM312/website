@@ -37,14 +37,26 @@ export class TrackerComponent implements OnInit, OnDestroy {
     private readonly statsUrl = '/api/stats';
     private readonly loginUrl = '/api/login';
     private readonly logoutUrl = '/api/logout';
+    private readonly totpSetupUrl = '/api/2fa/totp/setup';
+    private readonly webauthnRegisterOptionsUrl = '/api/webauthn/register-options';
+    private readonly webauthnRegisterVerifyUrl = '/api/webauthn/register-verify';
+    private readonly webauthnLoginOptionsUrl = '/api/webauthn/login-options';
+    private readonly webauthnLoginVerifyUrl = '/api/webauthn/login-verify';
     private readonly tokenStorageKey = 'tracker_session_token';
     private readonly userStorageKey = 'tracker_username';
     private subscriber = new Subscription();
 
     loginUsername = '';
     loginPassword = '';
+    totpCode = '';
     sessionToken = '';
     loggedInUser = '';
+
+    showSecuritySettings = false;
+    totpSetupSecret = '';
+    totpSetupUri = '';
+    securityMessage = '';
+    securityError = '';
 
     filterUsername = '';
     originIata = '';
@@ -126,14 +138,50 @@ export class TrackerComponent implements OnInit, OnDestroy {
         }
     }
 
+    private saveSession(token: string, username: string): void {
+        this.sessionToken = token;
+        this.loggedInUser = username;
+        this.loginPassword = '';
+        this.loginUsername = '';
+        this.totpCode = '';
+
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(this.tokenStorageKey, this.sessionToken);
+            localStorage.setItem(this.userStorageKey, this.loggedInUser);
+        }
+    }
+
     private clearSession(): void {
         this.sessionToken = '';
         this.loggedInUser = '';
         this.editingVisitId = null;
+        this.showSecuritySettings = false;
+        this.totpSetupSecret = '';
+        this.totpSetupUri = '';
         if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(this.tokenStorageKey);
             localStorage.removeItem(this.userStorageKey);
         }
+    }
+
+    private bufferToBase64Url(buffer: ArrayBuffer): string {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (const byte of bytes) {
+            binary += String.fromCharCode(byte);
+        }
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    private base64UrlToUint8Array(base64Url: string): Uint8Array {
+        const padding = '='.repeat((4 - (base64Url.length % 4)) % 4);
+        const base64 = (base64Url + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const raw = atob(base64);
+        const output = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) {
+            output[i] = raw.charCodeAt(i);
+        }
+        return output;
     }
 
     async onLogin(): Promise<void> {
@@ -149,44 +197,282 @@ export class TrackerComponent implements OnInit, OnDestroy {
         this.submitError = '';
         this.submitSuccess = '';
 
+        const payload: Record<string, string> = {
+            username: trimmedUser,
+            password: this.loginPassword
+        };
+        if (this.totpCode.trim()) {
+            payload['totp_code'] = this.totpCode.trim();
+        }
+
         try {
             const res = await fetch(this.loginUrl, {
                 method: 'POST',
                 headers: this.getRequestHeaders({
                     ['Content-Type']: 'application/json'
                 }),
-                body: JSON.stringify({
-                    username: trimmedUser,
-                    password: this.loginPassword
-                })
+                body: JSON.stringify(payload)
             });
 
             this.captureBookmark(res);
             const body = (await res.json()) as Record<string, unknown>;
 
             if (res.ok && typeof body['token'] === 'string') {
-                this.sessionToken = body['token'];
-                this.loggedInUser =
+                const resolvedUser =
                     typeof body['username'] === 'string' && body['username']
                         ? body['username']
                         : trimmedUser;
-                this.loginPassword = '';
-                this.loginUsername = '';
-
-                if (typeof localStorage !== 'undefined') {
-                    localStorage.setItem(this.tokenStorageKey, this.sessionToken);
-                    localStorage.setItem(this.userStorageKey, this.loggedInUser);
-                }
+                this.saveSession(body['token'], resolvedUser);
             } else {
                 this.authError =
                     typeof body['error'] === 'string' && body['error']
                         ? body['error']
-                        : 'Invalid username or password.';
+                        : 'Invalid credentials or 2FA code.';
             }
         } catch {
             this.authError = 'Network error: Unable to sign in.';
         } finally {
             this.authenticating = false;
+            this.cdr.detectChanges();
+        }
+    }
+
+    async onYubiKeyLogin(): Promise<void> {
+        const trimmedUser = this.loginUsername.trim();
+        if (!trimmedUser) {
+            this.authError = 'Enter your username first, then click Sign In with YubiKey.';
+            this.cdr.detectChanges();
+            return;
+        }
+
+        if (typeof navigator === 'undefined' || !navigator.credentials) {
+            this.authError = 'WebAuthn security keys are not supported in this browser.';
+            this.cdr.detectChanges();
+            return;
+        }
+
+        this.authenticating = true;
+        this.authError = '';
+
+        try {
+            const optionsRes = await fetch(this.webauthnLoginOptionsUrl, {
+                method: 'POST',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json'
+                }),
+                body: JSON.stringify({
+                    username: trimmedUser,
+                    password: this.loginPassword || undefined
+                })
+            });
+
+            const optionsBody = (await optionsRes.json()) as Record<string, unknown>;
+            if (!optionsRes.ok || typeof optionsBody['challenge'] !== 'string') {
+                this.authError =
+                    typeof optionsBody['error'] === 'string'
+                        ? optionsBody['error']
+                        : 'Failed to start YubiKey challenge.';
+                return;
+            }
+
+            const rawCredentials = Array.isArray(optionsBody['allowCredentials'])
+                ? (optionsBody['allowCredentials'] as Record<string, unknown>[])
+                : [];
+
+            const allowCredentials: PublicKeyCredentialDescriptor[] = rawCredentials
+                .filter(c => typeof c['id'] === 'string')
+                .map(c => ({
+                    id: this.base64UrlToUint8Array(c['id'] as string) as unknown as BufferSource,
+                    type: 'public-key'
+                }));
+
+            const publicKeyOptions: PublicKeyCredentialRequestOptions = {
+                challenge: this.base64UrlToUint8Array(optionsBody['challenge']) as unknown as BufferSource,
+                allowCredentials,
+                userVerification: 'preferred',
+                timeout: 60000
+            };
+
+            if (typeof optionsBody['rpId'] === 'string' && optionsBody['rpId']) {
+                publicKeyOptions.rpId = optionsBody['rpId'];
+            }
+
+            const assertion = (await navigator.credentials.get({
+                publicKey: publicKeyOptions
+            })) as PublicKeyCredential | null;
+
+            if (!assertion) {
+                this.authError = 'YubiKey authentication was cancelled.';
+                return;
+            }
+
+            const assertionResponse = assertion.response as AuthenticatorAssertionResponse;
+            const verifyRes = await fetch(this.webauthnLoginVerifyUrl, {
+                method: 'POST',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json'
+                }),
+                body: JSON.stringify({
+                    username: trimmedUser,
+                    ['credential_id']: assertion.id,
+                    ['authenticator_data']: this.bufferToBase64Url(assertionResponse.authenticatorData),
+                    ['client_data_json']: this.bufferToBase64Url(assertionResponse.clientDataJSON),
+                    signature: this.bufferToBase64Url(assertionResponse.signature)
+                })
+            });
+
+            this.captureBookmark(verifyRes);
+            const verifyBody = (await verifyRes.json()) as Record<string, unknown>;
+
+            if (verifyRes.ok && typeof verifyBody['token'] === 'string') {
+                const resolvedUser =
+                    typeof verifyBody['username'] === 'string' && verifyBody['username']
+                        ? verifyBody['username']
+                        : trimmedUser;
+                this.saveSession(verifyBody['token'], resolvedUser);
+            } else {
+                this.authError =
+                    typeof verifyBody['error'] === 'string'
+                        ? verifyBody['error']
+                        : 'YubiKey verification failed.';
+            }
+        } catch {
+            this.authError = 'YubiKey authentication failed or was cancelled.';
+        } finally {
+            this.authenticating = false;
+            this.cdr.detectChanges();
+        }
+    }
+
+    async setupTotp(): Promise<void> {
+        if (!this.sessionToken) return;
+        this.securityError = '';
+        this.securityMessage = '';
+
+        try {
+            const res = await fetch(this.totpSetupUrl, {
+                method: 'POST',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json',
+                    ['Authorization']: `Bearer ${this.sessionToken}`
+                })
+            });
+
+            const body = (await res.json()) as Record<string, unknown>;
+            if (res.ok && typeof body['secret'] === 'string') {
+                this.totpSetupSecret = body['secret'];
+                this.totpSetupUri =
+                    typeof body['otpauth_url'] === 'string' ? body['otpauth_url'] : '';
+                this.securityMessage =
+                    'Add this secret key to Microsoft Authenticator (or Yubico Authenticator).';
+            } else {
+                this.securityError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : 'Failed to generate Authenticator secret.';
+            }
+        } catch {
+            this.securityError = 'Network error while setting up Authenticator 2FA.';
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async registerYubiKey(): Promise<void> {
+        if (!this.sessionToken) return;
+        if (typeof navigator === 'undefined' || !navigator.credentials) {
+            this.securityError = 'WebAuthn security keys are not supported in this browser.';
+            this.cdr.detectChanges();
+            return;
+        }
+
+        this.securityError = '';
+        this.securityMessage = '';
+
+        try {
+            const optionsRes = await fetch(this.webauthnRegisterOptionsUrl, {
+                method: 'POST',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json',
+                    ['Authorization']: `Bearer ${this.sessionToken}`
+                })
+            });
+
+            const optionsBody = (await optionsRes.json()) as Record<string, unknown>;
+            if (!optionsRes.ok || typeof optionsBody['challenge'] !== 'string') {
+                this.securityError =
+                    typeof optionsBody['error'] === 'string'
+                        ? optionsBody['error']
+                        : 'Failed to start YubiKey registration.';
+                return;
+            }
+
+            const rpId =
+                typeof optionsBody['rpId'] === 'string' && optionsBody['rpId']
+                    ? optionsBody['rpId']
+                    : typeof window !== 'undefined'
+                      ? window.location.hostname
+                      : 'localhost';
+
+            const userBytes = new TextEncoder().encode(this.loggedInUser || 'user');
+            const credential = (await navigator.credentials.create({
+                publicKey: {
+                    challenge: this.base64UrlToUint8Array(optionsBody['challenge']) as unknown as BufferSource,
+                    rp: {
+                        name: 'Charlie Airport Tracker',
+                        id: rpId
+                    },
+                    user: {
+                        id: userBytes as unknown as BufferSource,
+                        name: this.loggedInUser,
+                        displayName: this.loggedInUser
+                    },
+                    pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
+                    authenticatorSelection: {
+                        userVerification: 'preferred'
+                    },
+                    timeout: 60000
+                }
+            })) as PublicKeyCredential | null;
+
+            if (!credential) {
+                this.securityError = 'YubiKey registration was cancelled.';
+                return;
+            }
+
+            const attestation = credential.response as AuthenticatorAttestationResponse & {
+                getPublicKey?: () => ArrayBuffer | null;
+            };
+            const spkiBuffer = attestation.getPublicKey ? attestation.getPublicKey() : null;
+            if (!spkiBuffer) {
+                this.securityError = 'Browser did not return a public key for the security key.';
+                return;
+            }
+
+            const verifyRes = await fetch(this.webauthnRegisterVerifyUrl, {
+                method: 'POST',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json',
+                    ['Authorization']: `Bearer ${this.sessionToken}`
+                }),
+                body: JSON.stringify({
+                    ['credential_id']: credential.id,
+                    ['public_key']: this.bufferToBase64Url(spkiBuffer)
+                })
+            });
+
+            const verifyBody = (await verifyRes.json()) as Record<string, unknown>;
+            if (verifyRes.ok) {
+                this.securityMessage = 'YubiKey registered! You can now sign in with your security key.';
+            } else {
+                this.securityError =
+                    typeof verifyBody['error'] === 'string'
+                        ? verifyBody['error']
+                        : 'Failed to save YubiKey credential.';
+            }
+        } catch {
+            this.securityError = 'YubiKey registration failed or was cancelled.';
+        } finally {
             this.cdr.detectChanges();
         }
     }

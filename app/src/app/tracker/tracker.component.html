@@ -29,18 +29,60 @@
             <form (ngSubmit)="onLogin()">
                 <div class="form-row">
                     <input type="text" name="loginUsername" [(ngModel)]="loginUsername" placeholder="Username (e.g., CharlieM312)" required>
-                    <input type="password" name="loginPassword" [(ngModel)]="loginPassword" placeholder="Password" required>
+                    <input type="password" name="loginPassword" [(ngModel)]="loginPassword" placeholder="Password">
                 </div>
-                <button type="submit" [disabled]="authenticating">
-                    {{ authenticating ? 'Signing In...' : 'Sign In' }}
-                </button>
+                <input
+                    type="text"
+                    name="totpCode"
+                    [(ngModel)]="totpCode"
+                    maxlength="6"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    placeholder="6-Digit Authenticator Code (if 2FA enabled)">
+                <div class="form-actions">
+                    <button type="submit" [disabled]="authenticating">
+                        {{ authenticating ? 'Signing In...' : 'Sign In with Password / 2FA' }}
+                    </button>
+                    <button type="button" class="secondary" [disabled]="authenticating" (click)="onYubiKeyLogin()">
+                        Sign In with YubiKey
+                    </button>
+                </div>
             </form>
         </section>
     } @else {
         <div class="session-bar">
             <span>Signed in as <strong>{{ loggedInUser }}</strong></span>
-            <button type="button" class="small-btn secondary" (click)="onLogout()">Sign Out</button>
+            <div class="session-actions">
+                <button type="button" class="small-btn" (click)="showSecuritySettings = !showSecuritySettings">
+                    {{ showSecuritySettings ? 'Hide 2FA Settings' : '2FA / YubiKey Setup' }}
+                </button>
+                <button type="button" class="small-btn secondary" (click)="onLogout()">Sign Out</button>
+            </div>
         </div>
+
+        @if (showSecuritySettings) {
+            <section class="security-panel">
+                <h3>Two-Factor Authentication Setup</h3>
+                @if (securityError) {
+                    <div class="banner error-banner" role="alert">{{ securityError }}</div>
+                }
+                @if (securityMessage) {
+                    <div class="banner success-banner" role="status">{{ securityMessage }}</div>
+                }
+                <div class="form-actions">
+                    <button type="button" (click)="setupTotp()">Setup Microsoft Authenticator</button>
+                    <button type="button" class="secondary" (click)="registerYubiKey()">Register YubiKey / Passkey</button>
+                </div>
+                @if (totpSetupSecret) {
+                    <div class="totp-setup-box">
+                        <p><strong>Authenticator Base32 Secret:</strong> <code>{{ totpSetupSecret }}</code></p>
+                        @if (totpSetupUri) {
+                            <p><small>URI: <code>{{ totpSetupUri }}</code></small></p>
+                        }
+                    </div>
+                }
+            </section>
+        }
 
         <h2>{{ editingVisitId !== null ? 'Edit Airport Visit' : 'Log Airport Visit' }}</h2>
 

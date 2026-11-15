@@ -58,9 +58,10 @@ describe('TrackerComponent', () => {
         expect(component.isAuthenticated).toBe(true);
     });
 
-    it('should authenticate user via POST /api/login and store session token', async () => {
+    it('should authenticate user via POST /api/login with optional totp_code and store session token', async () => {
         component.loginUsername = 'CharlieM312';
         component.loginPassword = 'secret-password';
+        component.totpCode = '123456';
 
         fetchMock.mockResolvedValueOnce({
             ok: true,
@@ -84,13 +85,15 @@ describe('TrackerComponent', () => {
             },
             body: JSON.stringify({
                 username: 'CharlieM312',
-                password: 'secret-password'
+                password: 'secret-password',
+                ['totp_code']: '123456'
             })
         });
         expect(component.isAuthenticated).toBe(true);
         expect(component.sessionToken).toBe('uuid-session-token');
         expect(component.loggedInUser).toBe('CharlieM312');
         expect(component.loginPassword).toBe('');
+        expect(component.totpCode).toBe('');
         expect(localStorage.getItem('tracker_session_token')).toBe('uuid-session-token');
     });
 
@@ -113,6 +116,75 @@ describe('TrackerComponent', () => {
 
         expect(component.isAuthenticated).toBe(false);
         expect(component.authError).toBe('Invalid username or password');
+    });
+
+    it('should authenticate via YubiKey WebAuthn flow', async () => {
+        component.loginUsername = 'CharlieM312';
+        const getMock = jest.fn().mockResolvedValue({
+            id: 'cred-123',
+            response: {
+                authenticatorData: new Uint8Array([1, 2, 3]).buffer,
+                clientDataJSON: new Uint8Array([4, 5, 6]).buffer,
+                signature: new Uint8Array([7, 8, 9]).buffer
+            }
+        });
+        Object.defineProperty(navigator, 'credentials', {
+            value: { get: getMock, create: jest.fn() },
+            configurable: true
+        });
+
+        fetchMock
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({
+                    challenge: 'Y2hhbGxlbmdl',
+                    rpId: 'localhost',
+                    allowCredentials: [{ id: 'Y3JlZC0xMjM', type: 'public-key' }]
+                })
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({
+                    success: true,
+                    token: 'yubikey-session-token',
+                    username: 'CharlieM312'
+                })
+            });
+
+        await component.onYubiKeyLogin();
+
+        expect(getMock).toHaveBeenCalled();
+        expect(component.sessionToken).toBe('yubikey-session-token');
+        expect(component.loggedInUser).toBe('CharlieM312');
+    });
+
+    it('should setup TOTP secret via POST /api/2fa/totp/setup', async () => {
+        component.sessionToken = 'uuid-session-token';
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                secret: 'JBSWY3DPEHPK3PXP',
+                ['otpauth_url']: 'otpauth://totp/AirportTracker:CharlieM312?secret=JBSWY3DPEHPK3PXP'
+            })
+        });
+
+        await component.setupTotp();
+
+        expect(fetchMock).toHaveBeenCalledWith('/api/2fa/totp/setup', {
+            method: 'POST',
+            headers: {
+                ['Content-Type']: 'application/json',
+                ['Authorization']: 'Bearer uuid-session-token'
+            }
+        });
+        expect(component.totpSetupSecret).toBe('JBSWY3DPEHPK3PXP');
+        expect(component.totpSetupUri).toContain('otpauth://totp/');
     });
 
     it('should clear session and call POST /api/logout on onLogout', async () => {
