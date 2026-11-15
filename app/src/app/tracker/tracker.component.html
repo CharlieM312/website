@@ -18,6 +18,27 @@
                 <span class="stat-label">{{ stats.totalDistanceMiles }} mi flown</span>
             </div>
         </section>
+
+        @if (stats.mostVisitedAirports?.length || stats.countriesVisited?.length) {
+            <div class="stats-breakdown">
+                @if (stats.mostVisitedAirports?.length) {
+                    <div class="breakdown-group">
+                        <small class="breakdown-label">Top Airports:</small>
+                        @for (a of stats.mostVisitedAirports; track a.iataCode) {
+                            <span class="meta-pill">{{ a.iataCode }} ({{ a.visitCount }})</span>
+                        }
+                    </div>
+                }
+                @if (stats.countriesVisited?.length) {
+                    <div class="breakdown-group">
+                        <small class="breakdown-label">Countries:</small>
+                        @for (c of stats.countriesVisited; track c.country) {
+                            <span class="meta-pill">{{ c.country }} ({{ c.visitCount }})</span>
+                        }
+                    </div>
+                }
+            </div>
+        }
     }
 
     @if (!isAuthenticated) {
@@ -53,7 +74,7 @@
         <div class="session-bar">
             <span>Signed in as <strong>{{ loggedInUser }}</strong></span>
             <div class="session-actions">
-                <button type="button" class="small-btn" (click)="showSecuritySettings = !showSecuritySettings">
+                <button type="button" class="small-btn" (click)="toggleSecuritySettings()">
                     {{ showSecuritySettings ? 'Hide 2FA Settings' : '2FA / YubiKey Setup' }}
                 </button>
                 <button type="button" class="small-btn secondary" (click)="onLogout()">Sign Out</button>
@@ -63,6 +84,14 @@
         @if (showSecuritySettings) {
             <section class="security-panel">
                 <h3>Two-Factor Authentication Setup</h3>
+                <div class="twofa-status-row">
+                    <span class="meta-pill" [class.active-pill]="totpEnabled">
+                        Authenticator: {{ totpEnabled ? 'Enabled' : 'Not set' }}
+                    </span>
+                    <span class="meta-pill" [class.active-pill]="webauthnEnabled">
+                        YubiKey / Passkey: {{ webauthnEnabled ? 'Registered' : 'Not set' }}
+                    </span>
+                </div>
                 @if (securityError) {
                     <div class="banner error-banner" role="alert">{{ securityError }}</div>
                 }
@@ -70,9 +99,27 @@
                     <div class="banner success-banner" role="status">{{ securityMessage }}</div>
                 }
                 <div class="form-actions">
-                    <button type="button" (click)="setupTotp()">Setup Microsoft Authenticator</button>
-                    <button type="button" class="secondary" (click)="registerYubiKey()">Register YubiKey / Passkey</button>
+                    <button type="button" (click)="setupTotp()">
+                        {{ totpEnabled ? 'Reset Microsoft Authenticator' : 'Setup Microsoft Authenticator' }}
+                    </button>
+                    <button type="button" class="secondary" (click)="registerYubiKey()">
+                        {{ webauthnEnabled ? 'Replace YubiKey / Passkey' : 'Register YubiKey / Passkey' }}
+                    </button>
                 </div>
+                @if (totpEnabled || webauthnEnabled) {
+                    <div class="form-actions">
+                        @if (totpEnabled) {
+                            <button type="button" class="small-btn danger" (click)="disableTotp()">
+                                Disable Authenticator
+                            </button>
+                        }
+                        @if (webauthnEnabled) {
+                            <button type="button" class="small-btn danger" (click)="disableWebAuthn()">
+                                Remove YubiKey
+                            </button>
+                        }
+                    </div>
+                }
                 @if (totpSetupSecret) {
                     <div class="totp-setup-box">
                         @if (totpQrDataUrl) {
@@ -88,6 +135,17 @@
                         @if (totpSetupUri) {
                             <p><small>URI: <code>{{ totpSetupUri }}</code></small></p>
                         }
+                        <div class="totp-verify-row">
+                            <input
+                                type="text"
+                                name="totpVerifyCode"
+                                [(ngModel)]="totpVerifyCode"
+                                maxlength="6"
+                                inputmode="numeric"
+                                autocomplete="one-time-code"
+                                placeholder="Enter 6-digit code to verify & enable">
+                            <button type="button" (click)="verifyTotp()">Verify & Enable</button>
+                        </div>
                     </div>
                 }
             </section>

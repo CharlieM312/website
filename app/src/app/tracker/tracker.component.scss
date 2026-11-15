@@ -8,7 +8,7 @@
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
         gap: 10px;
-        margin-bottom: 24px;
+        margin-bottom: 12px;
 
         .stat-card {
             display: flex;
@@ -30,6 +30,48 @@
                 margin-top: 4px;
             }
         }
+    }
+
+    .stats-breakdown {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-bottom: 24px;
+
+        .breakdown-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+
+            .breakdown-label {
+                opacity: 0.8;
+                font-weight: 600;
+            }
+        }
+    }
+
+    .meta-pill {
+        font-size: 0.78rem;
+        padding: 2px 7px;
+        border-radius: 999px;
+        border: 1px solid #4a5568;
+
+        &.distance-pill {
+            border-color: #0070f3;
+        }
+
+        &.active-pill {
+            border-color: #16a34a;
+            color: #22c55e;
+        }
+    }
+
+    .twofa-status-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 10px;
     }
 
     .auth-panel,
@@ -64,6 +106,14 @@
                 border-radius: 8px;
                 image-rendering: pixelated;
             }
+        }
+
+        .totp-verify-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+            word-break: normal;
         }
     }
 

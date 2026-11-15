@@ -186,6 +186,76 @@ describe('TrackerComponent', () => {
         expect(component.totpSetupSecret).toBe('JBSWY3DPEHPK3PXP');
         expect(component.totpSetupUri).toContain('otpauth://totp/');
         expect(component.totpQrDataUrl).toMatch(/^data:image\/png;base64,/);
+        expect(component.totpPendingVerification).toBe(true);
+    });
+
+    it('should verify pending TOTP code via POST /api/2fa/totp/verify and enable TOTP', async () => {
+        component.sessionToken = 'uuid-session-token';
+        component.totpSetupSecret = 'JBSWY3DPEHPK3PXP';
+        component.totpPendingVerification = true;
+        component.totpVerifyCode = '654321';
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                ['totp_enabled']: true
+            })
+        });
+
+        await component.verifyTotp();
+
+        expect(fetchMock).toHaveBeenCalledWith('/api/2fa/totp/verify', {
+            method: 'POST',
+            headers: {
+                ['Content-Type']: 'application/json',
+                ['Authorization']: 'Bearer uuid-session-token'
+            },
+            body: JSON.stringify({ code: '654321' })
+        });
+        expect(component.totpEnabled).toBe(true);
+        expect(component.totpPendingVerification).toBe(false);
+        expect(component.totpSetupSecret).toBe('');
+    });
+
+    it('should load 2FA status via GET /api/2fa/status and disable TOTP or WebAuthn', async () => {
+        component.sessionToken = 'uuid-session-token';
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                username: 'CharlieM312',
+                ['totp_enabled']: true,
+                ['webauthn_enabled']: true
+            })
+        });
+
+        await component.loadTwoFaStatus();
+
+        expect(component.totpEnabled).toBe(true);
+        expect(component.webauthnEnabled).toBe(true);
+
+        await component.disableTotp();
+        expect(fetchMock).toHaveBeenCalledWith('/api/2fa/totp', {
+            method: 'DELETE',
+            headers: {
+                ['Authorization']: 'Bearer uuid-session-token'
+            }
+        });
+        expect(component.totpEnabled).toBe(false);
+
+        await component.disableWebAuthn();
+        expect(fetchMock).toHaveBeenCalledWith('/api/webauthn', {
+            method: 'DELETE',
+            headers: {
+                ['Authorization']: 'Bearer uuid-session-token'
+            }
+        });
+        expect(component.webauthnEnabled).toBe(false);
     });
 
     it('should clear session and call POST /api/logout on onLogout', async () => {
