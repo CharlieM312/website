@@ -5,12 +5,14 @@ import { AboutComponent } from './about/about.component';
 import { LayoutComponent } from './layout/layout.component';
 import { SettingsComponent } from './settings/settings.component';
 import { ContributionsComponent } from './contributions/contributions.component';
+import { TrackerComponent } from './tracker/tracker.component';
 
 const routes: Routes = [
     { path: '', component: LayoutComponent,
         children: [
             { path: 'about', component: AboutComponent},
             { path: 'contributions', component: ContributionsComponent },
+            { path: 'tracker', component: TrackerComponent },
             { path: 'settings', component: SettingsComponent},
             { path: '', component: IndexComponent}
         ] 

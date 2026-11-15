@@ -10,10 +10,11 @@ import { AboutComponent } from './about/about.component';
 import { SideBarComponent } from './side-bar/side-bar.component';
 import { LayoutComponent } from './layout/layout.component';
 import { SettingsComponent } from './settings/settings.component';
+import { TrackerComponent } from './tracker/tracker.component';
 import { FormsModule } from '@angular/forms';
 
 @NgModule({
-    declarations: [AppComponent, IndexComponent, HeaderComponent, AboutComponent, SideBarComponent, LayoutComponent, SettingsComponent, ContributionsComponent, AirportFiltersComponent],
+    declarations: [AppComponent, IndexComponent, HeaderComponent, AboutComponent, SideBarComponent, LayoutComponent, SettingsComponent, ContributionsComponent, AirportFiltersComponent, TrackerComponent],
     imports: [BrowserModule, AppRoutingModule, FormsModule],
     bootstrap: [AppComponent],
     schemas: [CUSTOM_ELEMENTS_SCHEMA]

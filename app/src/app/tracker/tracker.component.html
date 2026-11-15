@@ -1,0 +1,32 @@
+<div class="tracker">
+    <h2>Log Airport Visit</h2>
+    <form (ngSubmit)="onSubmit()">
+        <input type="password" name="apiToken" [(ngModel)]="apiToken" placeholder="API Secret Token" required>
+        <hr>
+        <input type="text" name="username" [(ngModel)]="username" placeholder="Your Username (e.g., Charlie)" required>
+        <input type="text" name="iataCode" [(ngModel)]="iataCode" placeholder="IATA Code (e.g., LHR)" required>
+        <input type="text" name="airportName" [(ngModel)]="airportName" placeholder="Airport Name (Optional)">
+        <input type="date" name="visitDate" [(ngModel)]="visitDate" required>
+        <input type="text" name="notes" [(ngModel)]="notes" placeholder="Notes (Optional)">
+        <button type="submit">Add Visit</button>
+    </form>
+
+    <h2>Logged Visits</h2>
+    @if (loading) {
+        <div>Loading...</div>
+    } @else if (error) {
+        <div>{{ error }}</div>
+    } @else if (visits.length === 0) {
+        <p>No visits logged yet.</p>
+    } @else {
+        @for (v of visits; track $index) {
+            <div class="visit-card">
+                <strong>{{ v.iataCode }}</strong> ({{ v.airportName }})<br>
+                <small>Visited by: {{ v.username }} on {{ v.visitDate }}</small>
+                @if (v.notes) {
+                    <p>{{ v.notes }}</p>
+                }
+            </div>
+        }
+    }
+</div>
