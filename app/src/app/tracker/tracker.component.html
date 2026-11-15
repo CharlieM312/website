@@ -20,41 +20,61 @@
         </section>
     }
 
-    <h2>{{ editingVisitId !== null ? 'Edit Airport Visit' : 'Log Airport Visit' }}</h2>
-
-    @if (submitError) {
-        <div class="banner error-banner" role="alert">{{ submitError }}</div>
-    }
-    @if (submitSuccess) {
-        <div class="banner success-banner" role="status">{{ submitSuccess }}</div>
-    }
-
-    <form (ngSubmit)="onSubmit()">
-        <input type="password" name="apiToken" [(ngModel)]="apiToken" placeholder="API Secret Token" required>
-        <hr>
-        <div class="form-row">
-            <input type="text" name="username" [(ngModel)]="username" placeholder="Username (e.g., CharlieM312)" required>
-            <input type="date" name="visitDate" [(ngModel)]="visitDate" required>
-        </div>
-        <div class="form-row">
-            <input type="text" name="originIata" [(ngModel)]="originIata" maxlength="3" class="iata-input" placeholder="Origin IATA (Optional, e.g., LHR)">
-            <input type="text" name="iataCode" [(ngModel)]="iataCode" maxlength="3" class="iata-input" placeholder="Destination / Visited IATA (e.g., HAM)" required>
-        </div>
-        <div class="form-row">
-            <input type="text" name="flightNumber" [(ngModel)]="flightNumber" placeholder="Flight # (Optional, e.g., BA968)">
-            <input type="text" name="airportName" [(ngModel)]="airportName" placeholder="Airport Name (Auto-filled if blank)">
-        </div>
-        <input type="text" name="notes" [(ngModel)]="notes" placeholder="Notes (Optional)">
-
-        <div class="form-actions">
-            <button type="submit" [disabled]="submitting">
-                {{ editingVisitId !== null ? 'Update Visit' : 'Add Visit' }}
-            </button>
-            @if (editingVisitId !== null) {
-                <button type="button" class="secondary" (click)="cancelEdit()" [disabled]="submitting">Cancel</button>
+    @if (!isAuthenticated) {
+        <section class="auth-panel">
+            <h2>Sign In to Log Visits</h2>
+            @if (authError) {
+                <div class="banner error-banner" role="alert">{{ authError }}</div>
             }
+            <form (ngSubmit)="onLogin()">
+                <div class="form-row">
+                    <input type="text" name="loginUsername" [(ngModel)]="loginUsername" placeholder="Username (e.g., CharlieM312)" required>
+                    <input type="password" name="loginPassword" [(ngModel)]="loginPassword" placeholder="Password" required>
+                </div>
+                <button type="submit" [disabled]="authenticating">
+                    {{ authenticating ? 'Signing In...' : 'Sign In' }}
+                </button>
+            </form>
+        </section>
+    } @else {
+        <div class="session-bar">
+            <span>Signed in as <strong>{{ loggedInUser }}</strong></span>
+            <button type="button" class="small-btn secondary" (click)="onLogout()">Sign Out</button>
         </div>
-    </form>
+
+        <h2>{{ editingVisitId !== null ? 'Edit Airport Visit' : 'Log Airport Visit' }}</h2>
+
+        @if (submitError) {
+            <div class="banner error-banner" role="alert">{{ submitError }}</div>
+        }
+        @if (submitSuccess) {
+            <div class="banner success-banner" role="status">{{ submitSuccess }}</div>
+        }
+
+        <form (ngSubmit)="onSubmit()">
+            <div class="form-row">
+                <input type="text" name="originIata" [(ngModel)]="originIata" maxlength="3" class="iata-input" placeholder="Origin IATA (Optional, e.g., LHR)">
+                <input type="text" name="iataCode" [(ngModel)]="iataCode" maxlength="3" class="iata-input" placeholder="Destination / Visited IATA (e.g., HAM)" required>
+            </div>
+            <div class="form-row">
+                <input type="text" name="flightNumber" [(ngModel)]="flightNumber" placeholder="Flight # (Optional, e.g., BA968)">
+                <input type="date" name="visitDate" [(ngModel)]="visitDate" required>
+            </div>
+            <div class="form-row">
+                <input type="text" name="airportName" [(ngModel)]="airportName" placeholder="Airport Name (Auto-filled if blank)">
+                <input type="text" name="notes" [(ngModel)]="notes" placeholder="Notes (Optional)">
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" [disabled]="submitting">
+                    {{ editingVisitId !== null ? 'Update Visit' : 'Add Visit' }}
+                </button>
+                @if (editingVisitId !== null) {
+                    <button type="button" class="secondary" (click)="cancelEdit()">Cancel</button>
+                }
+            </div>
+        </form>
+    }
 
     <h2>Logged Visits ({{ visits.length }})</h2>
     <form class="filter-form" (ngSubmit)="loadUserVisits()">
@@ -72,7 +92,7 @@
     } @else if (visits.length === 0) {
         <p class="status-text">No visits logged yet.</p>
     } @else {
-        @for (v of visits; track (v.id ? 'id-' + v.id : 'index-' + $index)) {
+        @for (v of visits; track v.id || $index) {
             <div class="visit-card">
                 <div class="visit-header">
                     <div class="route-badges">
@@ -88,12 +108,14 @@
                             <span class="meta-pill distance-pill">{{ v.distanceKm }} km</span>
                         }
                     </div>
-                    <div class="card-actions">
-                        @if (v.id) {
-                            <button type="button" class="small-btn" (click)="startEdit(v)" [disabled]="submitting">Edit</button>
-                            <button type="button" class="small-btn danger" (click)="deleteVisit(v.id)">Delete</button>
-                        }
-                    </div>
+                    @if (isAuthenticated) {
+                        <div class="card-actions">
+                            <button type="button" class="small-btn" (click)="startEdit(v)">Edit</button>
+                            @if (v.id) {
+                                <button type="button" class="small-btn danger" (click)="deleteVisit(v.id)">Delete</button>
+                            }
+                        </div>
+                    }
                 </div>
 
                 <div class="airport-details">

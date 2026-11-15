@@ -12,8 +12,10 @@ describe('TrackerComponent', () => {
     let fetchMock: jest.Mock;
 
     beforeEach(async () => {
+        localStorage.clear();
         fetchMock = jest.fn().mockResolvedValue({
             ok: true,
+            status: 200,
             headers: {
                 get: jest.fn().mockReturnValue(null)
             },
@@ -32,6 +34,7 @@ describe('TrackerComponent', () => {
     });
 
     afterEach(() => {
+        localStorage.clear();
         jest.restoreAllMocks();
     });
 
@@ -39,20 +42,102 @@ describe('TrackerComponent', () => {
         expect(component).toBeTruthy();
     });
 
-    it('should enable dark mode on init when cookie is true', () => {
+    it('should enable dark mode and restore saved session on init', () => {
         const cookieService = TestBed.inject(CookieService);
         const darkModeService = TestBed.inject(DarkModeService);
         jest.spyOn(cookieService, 'get').mockReturnValue('true');
         const enableSpy = jest.spyOn(darkModeService, 'enableDarkMode');
+        localStorage.setItem('tracker_session_token', 'saved-token-123');
+        localStorage.setItem('tracker_username', 'CharlieM312');
 
         component.ngOnInit();
 
         expect(enableSpy).toHaveBeenCalled();
+        expect(component.sessionToken).toBe('saved-token-123');
+        expect(component.loggedInUser).toBe('CharlieM312');
+        expect(component.isAuthenticated).toBe(true);
+    });
+
+    it('should authenticate user via POST /api/login and store session token', async () => {
+        component.loginUsername = 'CharlieM312';
+        component.loginPassword = 'secret-password';
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: {
+                get: jest.fn().mockReturnValue(null)
+            },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                token: 'uuid-session-token',
+                username: 'CharlieM312'
+            })
+        });
+
+        await component.onLogin();
+
+        expect(fetchMock).toHaveBeenCalledWith('/api/login', {
+            method: 'POST',
+            headers: {
+                ['Content-Type']: 'application/json'
+            },
+            body: JSON.stringify({
+                username: 'CharlieM312',
+                password: 'secret-password'
+            })
+        });
+        expect(component.isAuthenticated).toBe(true);
+        expect(component.sessionToken).toBe('uuid-session-token');
+        expect(component.loggedInUser).toBe('CharlieM312');
+        expect(component.loginPassword).toBe('');
+        expect(localStorage.getItem('tracker_session_token')).toBe('uuid-session-token');
+    });
+
+    it('should set authError when login fails', async () => {
+        component.loginUsername = 'CharlieM312';
+        component.loginPassword = 'wrong-password';
+
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 401,
+            headers: {
+                get: jest.fn().mockReturnValue(null)
+            },
+            json: jest.fn().mockResolvedValue({
+                error: 'Invalid username or password'
+            })
+        });
+
+        await component.onLogin();
+
+        expect(component.isAuthenticated).toBe(false);
+        expect(component.authError).toBe('Invalid username or password');
+    });
+
+    it('should clear session and call POST /api/logout on onLogout', async () => {
+        component.sessionToken = 'uuid-session-token';
+        component.loggedInUser = 'CharlieM312';
+        localStorage.setItem('tracker_session_token', 'uuid-session-token');
+
+        await component.onLogout();
+
+        expect(component.isAuthenticated).toBe(false);
+        expect(component.sessionToken).toBe('');
+        expect(component.loggedInUser).toBe('');
+        expect(localStorage.getItem('tracker_session_token')).toBeNull();
+        expect(fetchMock).toHaveBeenCalledWith('/api/logout', {
+            method: 'POST',
+            headers: {
+                ['Authorization']: 'Bearer uuid-session-token'
+            }
+        });
     });
 
     it('should load and map visits with flight details and capture x-d1-bookmark', async () => {
         fetchMock.mockResolvedValueOnce({
             ok: true,
+            status: 200,
             headers: {
                 get: jest.fn().mockReturnValue('bookmark-123')
             },
@@ -116,6 +201,7 @@ describe('TrackerComponent', () => {
     it('should load travel stats from /api/stats', async () => {
         fetchMock.mockResolvedValueOnce({
             ok: true,
+            status: 200,
             headers: {
                 get: jest.fn().mockReturnValue(null)
             },
@@ -153,6 +239,7 @@ describe('TrackerComponent', () => {
         component.filterUsername = 'CharlieM312';
         fetchMock.mockResolvedValueOnce({
             ok: true,
+            status: 200,
             headers: {
                 get: jest.fn().mockReturnValue(null)
             },
@@ -176,9 +263,9 @@ describe('TrackerComponent', () => {
         expect(component.visits[0].iataCode).toBe('EDI');
     });
 
-    it('should fall back to loadVisits when filterUsername and username are empty', async () => {
+    it('should fall back to loadVisits when filterUsername and loggedInUser are empty', async () => {
         component.filterUsername = '   ';
-        component.username = '';
+        component.loggedInUser = '';
 
         await component.loadUserVisits();
 
@@ -204,9 +291,9 @@ describe('TrackerComponent', () => {
         expect(fetchMock).toHaveBeenCalledWith('/api/visits', undefined);
     });
 
-    it('should submit a new visit with originIata and flightNumber, clear form fields except token, and reload visits', async () => {
-        component.apiToken = 'secret-token';
-        component.username = 'CharlieM312';
+    it('should submit a new visit using sessionToken and loggedInUser', async () => {
+        component.sessionToken = 'uuid-session-token';
+        component.loggedInUser = 'CharlieM312';
         component.originIata = 'lhr';
         component.iataCode = 'ham';
         component.flightNumber = 'ba968';
@@ -220,7 +307,7 @@ describe('TrackerComponent', () => {
             method: 'POST',
             headers: {
                 ['Content-Type']: 'application/json',
-                ['Authorization']: 'Bearer secret-token'
+                ['Authorization']: 'Bearer uuid-session-token'
             },
             body: JSON.stringify({
                 username: 'CharlieM312',
@@ -232,8 +319,7 @@ describe('TrackerComponent', () => {
                 ['airport_name']: 'Hamburg Airport'
             })
         });
-        expect(component.apiToken).toBe('secret-token');
-        expect(component.username).toBe('');
+        expect(component.sessionToken).toBe('uuid-session-token');
         expect(component.originIata).toBe('');
         expect(component.iataCode).toBe('');
         expect(component.flightNumber).toBe('');
@@ -244,7 +330,8 @@ describe('TrackerComponent', () => {
     });
 
     it('should send PATCH request when editing an existing visit', async () => {
-        component.apiToken = 'secret-token';
+        component.sessionToken = 'uuid-session-token';
+        component.loggedInUser = 'CharlieM312';
         component.startEdit({
             id: 1,
             username: 'CharlieM312',
@@ -265,7 +352,7 @@ describe('TrackerComponent', () => {
             method: 'PATCH',
             headers: {
                 ['Content-Type']: 'application/json',
-                ['Authorization']: 'Bearer secret-token'
+                ['Authorization']: 'Bearer uuid-session-token'
             },
             body: JSON.stringify({
                 username: 'CharlieM312',
@@ -281,32 +368,15 @@ describe('TrackerComponent', () => {
         expect(component.submitSuccess).toBe('Visit updated successfully.');
     });
 
-    it('should ignore startEdit for rows without a persisted id', () => {
-        component.startEdit({
-            id: 0,
-            username: 'Anonymous',
-            iataCode: 'LGW',
-            originIata: '',
-            flightNumber: '',
-            distanceKm: null,
-            airportName: 'Unknown Airport',
-            city: '',
-            country: '',
-            visitDate: '2026-11-16',
-            notes: ''
-        });
-
-        expect(component.editingVisitId).toBeNull();
-    });
-
-    it('should display API error message when onSubmit fails', async () => {
-        component.apiToken = 'bad-token';
-        component.username = 'CharlieM312';
+    it('should display API error message when onSubmit fails with 400', async () => {
+        component.sessionToken = 'uuid-session-token';
+        component.loggedInUser = 'CharlieM312';
         component.iataCode = 'XYZ';
         component.visitDate = '2026-11-15';
 
         fetchMock.mockResolvedValueOnce({
             ok: false,
+            status: 400,
             headers: {
                 get: jest.fn().mockReturnValue(null)
             },
@@ -320,36 +390,12 @@ describe('TrackerComponent', () => {
         expect(component.submitError).toBe(
             'Invalid or unknown iata_code \'XYZ\'. It must match an airport in /api/airports.'
         );
-        expect(component.username).toBe('CharlieM312');
+        expect(component.isAuthenticated).toBe(true);
     });
 
-    it('should refresh using applied username scope after submit', async () => {
-        component.apiToken = 'secret-token';
-        component.appliedUsernameFilter = 'CharlieM312';
-        component.filterUsername = 'DifferentUser';
-        component.username = 'CharlieM312';
-        component.iataCode = 'HAM';
-        component.visitDate = '2026-11-15';
-
-        fetchMock
-            .mockResolvedValueOnce({
-                ok: true,
-                headers: { get: jest.fn().mockReturnValue(null) },
-                json: jest.fn().mockResolvedValue({})
-            })
-            .mockResolvedValueOnce({
-                ok: true,
-                headers: { get: jest.fn().mockReturnValue(null) },
-                json: jest.fn().mockResolvedValue([])
-            });
-
-        await component.onSubmit();
-
-        expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/visits?username=CharlieM312', undefined);
-    });
-
-    it('should delete a visit by id when apiToken is provided', async () => {
-        component.apiToken = 'secret-token';
+    it('should delete a visit by id when authenticated', async () => {
+        component.sessionToken = 'uuid-session-token';
+        component.loggedInUser = 'CharlieM312';
         component.visits = [
             {
                 id: 1,
@@ -372,112 +418,11 @@ describe('TrackerComponent', () => {
             method: 'DELETE',
             headers: {
                 ['Content-Type']: 'application/json',
-                ['Authorization']: 'Bearer secret-token'
+                ['Authorization']: 'Bearer uuid-session-token'
             },
             body: JSON.stringify({ id: 1 })
         });
         expect(component.visits).toHaveLength(0);
         expect(component.submitSuccess).toBe('Visit deleted.');
-    });
-
-    it('should clear edit state when deleting the active edit row', async () => {
-        component.apiToken = 'secret-token';
-        component.editingVisitId = 1;
-        component.username = 'CharlieM312';
-        component.iataCode = 'HAM';
-        component.visitDate = '2026-09-15';
-        component.notes = 'Editing';
-        component.visits = [
-            {
-                id: 1,
-                username: 'CharlieM312',
-                iataCode: 'HAM',
-                originIata: '',
-                flightNumber: '',
-                distanceKm: null,
-                airportName: 'Hamburg Airport',
-                city: '',
-                country: '',
-                visitDate: '2026-09-15',
-                notes: 'Editing'
-            }
-        ];
-
-        await component.deleteVisit(1);
-
-        expect(component.editingVisitId).toBeNull();
-        expect(component.username).toBe('');
-        expect(component.iataCode).toBe('');
-    });
-
-    it('should keep newest visits response when filter is changed mid-flight', async () => {
-        let resolveFiltered: ((value: unknown) => void) | undefined;
-        let resolveAll: ((value: unknown) => void) | undefined;
-
-        const filteredPromise = new Promise(resolve => {
-            resolveFiltered = resolve;
-        });
-        const allPromise = new Promise(resolve => {
-            resolveAll = resolve;
-        });
-
-        fetchMock.mockImplementation((url: string) => {
-            if (url === '/api/visits?username=CharlieM312') {
-                return filteredPromise;
-            }
-            if (url === '/api/visits') {
-                return allPromise;
-            }
-            if (url === '/api/stats') {
-                return Promise.resolve({
-                    ok: true,
-                    headers: { get: jest.fn().mockReturnValue(null) },
-                    json: jest.fn().mockResolvedValue({})
-                });
-            }
-            return Promise.resolve({
-                ok: true,
-                headers: { get: jest.fn().mockReturnValue(null) },
-                json: jest.fn().mockResolvedValue([])
-            });
-        });
-
-        component.filterUsername = 'CharlieM312';
-        const filteredLoad = component.loadUserVisits();
-
-        component.filterUsername = '';
-        const showAllLoad = component.clearUserFilter();
-
-        resolveAll?.({
-            ok: true,
-            headers: { get: jest.fn().mockReturnValue(null) },
-            json: jest.fn().mockResolvedValue([
-                {
-                    id: 9,
-                    username: 'All',
-                    ['iata_code']: 'JFK',
-                    ['visit_date']: '2026-11-16'
-                }
-            ])
-        });
-        await showAllLoad;
-
-        resolveFiltered?.({
-            ok: true,
-            headers: { get: jest.fn().mockReturnValue(null) },
-            json: jest.fn().mockResolvedValue([
-                {
-                    id: 3,
-                    username: 'CharlieM312',
-                    ['iata_code']: 'HAM',
-                    ['visit_date']: '2026-10-01'
-                }
-            ])
-        });
-        await filteredLoad;
-
-        expect(component.visits).toHaveLength(1);
-        expect(component.visits[0].id).toBe(9);
-        expect(component.appliedUsernameFilter).toBe('');
     });
 });

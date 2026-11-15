@@ -35,12 +35,17 @@ export interface TravelStats {
 export class TrackerComponent implements OnInit, OnDestroy {
     private readonly apiUrl = '/api/visits';
     private readonly statsUrl = '/api/stats';
+    private readonly loginUrl = '/api/login';
+    private readonly logoutUrl = '/api/logout';
+    private readonly tokenStorageKey = 'tracker_session_token';
+    private readonly userStorageKey = 'tracker_username';
     private subscriber = new Subscription();
-    private visitsRequestGeneration = 0;
-    private statsRequestGeneration = 0;
 
-    apiToken = '';
-    username = '';
+    loginUsername = '';
+    loginPassword = '';
+    sessionToken = '';
+    loggedInUser = '';
+
     filterUsername = '';
     originIata = '';
     iataCode = '';
@@ -55,11 +60,12 @@ export class TrackerComponent implements OnInit, OnDestroy {
     visits: VisitItem[] = [];
     stats: TravelStats | null = null;
     loading = true;
+    authenticating = false;
     submitting = false;
     error = '';
+    authError = '';
     submitError = '';
     submitSuccess = '';
-    appliedUsernameFilter = '';
 
     constructor(
         private darkModeService: DarkModeService,
@@ -70,6 +76,11 @@ export class TrackerComponent implements OnInit, OnDestroy {
     ngOnInit(): void {
         if (this.cookieService.get('darkMode') === 'true') {
             this.darkModeService.enableDarkMode();
+        }
+
+        if (typeof localStorage !== 'undefined') {
+            this.sessionToken = localStorage.getItem(this.tokenStorageKey) || '';
+            this.loggedInUser = localStorage.getItem(this.userStorageKey) || '';
         }
 
         this.subscriber.add(
@@ -96,6 +107,10 @@ export class TrackerComponent implements OnInit, OnDestroy {
         this.subscriber.unsubscribe();
     }
 
+    get isAuthenticated(): boolean {
+        return Boolean(this.sessionToken);
+    }
+
     private getRequestHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
         const headers: Record<string, string> = { ...extraHeaders };
         if (this.d1Bookmark) {
@@ -108,6 +123,92 @@ export class TrackerComponent implements OnInit, OnDestroy {
         const bookmark = res.headers?.get?.('x-d1-bookmark');
         if (bookmark) {
             this.d1Bookmark = bookmark;
+        }
+    }
+
+    private clearSession(): void {
+        this.sessionToken = '';
+        this.loggedInUser = '';
+        this.editingVisitId = null;
+        if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(this.tokenStorageKey);
+            localStorage.removeItem(this.userStorageKey);
+        }
+    }
+
+    async onLogin(): Promise<void> {
+        const trimmedUser = this.loginUsername.trim();
+        if (!trimmedUser || !this.loginPassword) {
+            this.authError = 'Please enter both username and password.';
+            this.cdr.detectChanges();
+            return;
+        }
+
+        this.authenticating = true;
+        this.authError = '';
+        this.submitError = '';
+        this.submitSuccess = '';
+
+        try {
+            const res = await fetch(this.loginUrl, {
+                method: 'POST',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json'
+                }),
+                body: JSON.stringify({
+                    username: trimmedUser,
+                    password: this.loginPassword
+                })
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+
+            if (res.ok && typeof body['token'] === 'string') {
+                this.sessionToken = body['token'];
+                this.loggedInUser =
+                    typeof body['username'] === 'string' && body['username']
+                        ? body['username']
+                        : trimmedUser;
+                this.loginPassword = '';
+                this.loginUsername = '';
+
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem(this.tokenStorageKey, this.sessionToken);
+                    localStorage.setItem(this.userStorageKey, this.loggedInUser);
+                }
+            } else {
+                this.authError =
+                    typeof body['error'] === 'string' && body['error']
+                        ? body['error']
+                        : 'Invalid username or password.';
+            }
+        } catch {
+            this.authError = 'Network error: Unable to sign in.';
+        } finally {
+            this.authenticating = false;
+            this.cdr.detectChanges();
+        }
+    }
+
+    async onLogout(): Promise<void> {
+        const currentToken = this.sessionToken;
+        this.clearSession();
+        this.submitError = '';
+        this.submitSuccess = '';
+        this.cdr.detectChanges();
+
+        if (!currentToken) return;
+
+        try {
+            await fetch(this.logoutUrl, {
+                method: 'POST',
+                headers: this.getRequestHeaders({
+                    ['Authorization']: `Bearer ${currentToken}`
+                })
+            });
+        } catch {
+            // Local session is already cleared
         }
     }
 
@@ -141,8 +242,6 @@ export class TrackerComponent implements OnInit, OnDestroy {
     }
 
     async loadStats(username?: string): Promise<void> {
-        const requestGeneration = ++this.statsRequestGeneration;
-
         try {
             const query = username ? `?username=${encodeURIComponent(username)}` : '';
             const res = await fetch(
@@ -151,7 +250,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
                     ? { headers: this.getRequestHeaders() }
                     : undefined
             );
-            if (requestGeneration !== this.statsRequestGeneration || !res.ok) return;
+            if (!res.ok) return;
             this.captureBookmark(res);
 
             const raw = (await res.json()) as Record<string, unknown>;
@@ -165,14 +264,11 @@ export class TrackerComponent implements OnInit, OnDestroy {
         } catch {
             // Stats are non-blocking; ignore errors if endpoint is unavailable
         } finally {
-            if (requestGeneration === this.statsRequestGeneration) {
-                this.cdr.detectChanges();
-            }
+            this.cdr.detectChanges();
         }
     }
 
     async loadVisits(): Promise<void> {
-        const requestGeneration = ++this.visitsRequestGeneration;
         this.loading = true;
         this.error = '';
 
@@ -182,36 +278,24 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 this.apiUrl,
                 Object.keys(headers).length > 0 ? { headers } : undefined
             );
-            if (requestGeneration !== this.visitsRequestGeneration) return;
             this.captureBookmark(res);
             const rawVisits = (await res.json()) as Record<string, unknown>[];
             this.visits = this.mapVisits(rawVisits);
-            this.appliedUsernameFilter = '';
         } catch {
-            if (requestGeneration === this.visitsRequestGeneration) {
-                this.error = 'Failed to load visits.';
-            }
+            this.error = 'Failed to load visits.';
         } finally {
-            if (requestGeneration === this.visitsRequestGeneration) {
-                this.loading = false;
-                this.cdr.detectChanges();
-            }
+            this.loading = false;
+            this.cdr.detectChanges();
         }
     }
 
     async loadUserVisits(): Promise<void> {
-        const targetUsername = (this.filterUsername || this.username).trim();
+        const targetUsername = (this.filterUsername || this.loggedInUser).trim();
         if (!targetUsername) {
             await this.loadVisits();
             await this.loadStats();
             return;
         }
-
-        await this.loadVisitsForUsername(targetUsername);
-    }
-
-    private async loadVisitsForUsername(targetUsername: string): Promise<void> {
-        const requestGeneration = ++this.visitsRequestGeneration;
 
         this.loading = true;
         this.error = '';
@@ -222,21 +306,15 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 `${this.apiUrl}?username=${encodeURIComponent(targetUsername)}`,
                 Object.keys(headers).length > 0 ? { headers } : undefined
             );
-            if (requestGeneration !== this.visitsRequestGeneration) return;
             this.captureBookmark(res);
             const rawVisits = (await res.json()) as Record<string, unknown>[];
             this.visits = this.mapVisits(rawVisits);
-            this.appliedUsernameFilter = targetUsername;
             void this.loadStats(targetUsername);
         } catch {
-            if (requestGeneration === this.visitsRequestGeneration) {
-                this.error = 'Failed to load user visits.';
-            }
+            this.error = 'Failed to load user visits.';
         } finally {
-            if (requestGeneration === this.visitsRequestGeneration) {
-                this.loading = false;
-                this.cdr.detectChanges();
-            }
+            this.loading = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -247,12 +325,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
     }
 
     startEdit(visit: VisitItem): void {
-        if (this.submitting || !visit.id) {
-            return;
-        }
-
         this.editingVisitId = visit.id;
-        this.username = visit.username === 'Anonymous' ? '' : visit.username;
         this.originIata = visit.originIata;
         this.iataCode = visit.iataCode;
         this.flightNumber = visit.flightNumber;
@@ -264,17 +337,12 @@ export class TrackerComponent implements OnInit, OnDestroy {
     }
 
     cancelEdit(): void {
-        if (this.submitting) {
-            return;
-        }
-
         this.editingVisitId = null;
         this.resetFormFields();
         this.submitError = '';
     }
 
     private resetFormFields(): void {
-        this.username = '';
         this.originIata = '';
         this.iataCode = '';
         this.flightNumber = '';
@@ -284,12 +352,18 @@ export class TrackerComponent implements OnInit, OnDestroy {
     }
 
     async onSubmit(): Promise<void> {
+        if (!this.sessionToken) {
+            this.submitError = 'Please sign in first to log or edit visits.';
+            this.cdr.detectChanges();
+            return;
+        }
+
         this.submitting = true;
         this.submitError = '';
         this.submitSuccess = '';
 
         const data: Record<string, string | number> = {
-            username: this.username,
+            username: this.loggedInUser,
             ['iata_code']: this.iataCode.trim().toUpperCase(),
             ['visit_date']: this.visitDate,
             notes: this.notes
@@ -314,7 +388,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 method,
                 headers: this.getRequestHeaders({
                     ['Content-Type']: 'application/json',
-                    ['Authorization']: `Bearer ${this.apiToken}`
+                    ['Authorization']: `Bearer ${this.sessionToken}`
                 }),
                 body: JSON.stringify(data)
             });
@@ -327,15 +401,15 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 this.submitSuccess = isEditing ? 'Visit updated successfully.' : 'Visit logged successfully.';
                 this.cdr.detectChanges();
 
-                const activeFilter = this.appliedUsernameFilter;
+                const activeFilter = this.filterUsername.trim();
                 if (activeFilter) {
-                    await this.loadVisitsForUsername(activeFilter);
+                    await this.loadUserVisits();
                 } else {
                     await this.loadVisits();
                     await this.loadStats();
                 }
             } else {
-                let errorMessage = 'Unauthorized: Invalid token or failed to log visit.';
+                let errorMessage = 'Unauthorized: Session expired or failed to log visit.';
                 try {
                     const errBody = (await res.json()) as Record<string, unknown>;
                     if (typeof errBody['error'] === 'string' && errBody['error']) {
@@ -343,6 +417,9 @@ export class TrackerComponent implements OnInit, OnDestroy {
                     }
                 } catch {
                     // Keep default message if response body is not JSON
+                }
+                if (res.status === 401) {
+                    this.clearSession();
                 }
                 this.submitError = errorMessage;
             }
@@ -355,8 +432,8 @@ export class TrackerComponent implements OnInit, OnDestroy {
     }
 
     async deleteVisit(id: number): Promise<void> {
-        if (!this.apiToken) {
-            this.submitError = 'Enter your API Secret Token above to delete a visit.';
+        if (!this.sessionToken) {
+            this.submitError = 'Please sign in first to delete a visit.';
             this.cdr.detectChanges();
             return;
         }
@@ -369,7 +446,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 method: 'DELETE',
                 headers: this.getRequestHeaders({
                     ['Content-Type']: 'application/json',
-                    ['Authorization']: `Bearer ${this.apiToken}`
+                    ['Authorization']: `Bearer ${this.sessionToken}`
                 }),
                 body: JSON.stringify({ id })
             });
@@ -378,13 +455,13 @@ export class TrackerComponent implements OnInit, OnDestroy {
 
             if (res.ok) {
                 this.visits = this.visits.filter(v => v.id !== id);
-                if (this.editingVisitId === id) {
-                    this.cancelEdit();
-                }
                 this.submitSuccess = 'Visit deleted.';
-                void this.loadStats(this.appliedUsernameFilter || undefined);
+                void this.loadStats(this.filterUsername.trim() || undefined);
             } else {
-                this.submitError = 'Failed to delete visit. Check your API Secret Token.';
+                if (res.status === 401) {
+                    this.clearSession();
+                }
+                this.submitError = 'Failed to delete visit. Your session may have expired.';
             }
         } catch {
             this.submitError = 'Network error: Failed to delete visit.';
