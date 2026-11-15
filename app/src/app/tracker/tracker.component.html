@@ -128,12 +128,20 @@
                                         <small class="passkey-date">Added {{ pk.createdAt }}</small>
                                     }
                                 </div>
-                                <button
-                                    type="button"
-                                    class="small-btn danger"
-                                    (click)="deletePasskey(pk.credentialId)">
-                                    Delete
-                                </button>
+                                <div class="card-actions">
+                                    <button
+                                        type="button"
+                                        class="small-btn secondary"
+                                        (click)="renamePasskey(pk.credentialId)">
+                                        Rename
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="small-btn danger"
+                                        (click)="deletePasskey(pk.credentialId)">
+                                        Delete
+                                    </button>
+                                </div>
                             </div>
                         }
                     </div>

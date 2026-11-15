@@ -279,6 +279,21 @@ describe('TrackerComponent', () => {
         expect(component.passkeys[0].credentialId).toBe('cred-2');
         expect(component.webauthnEnabled).toBe(true);
 
+        jest.spyOn(window, 'prompt').mockReturnValue('YubiKey 5 NFC');
+        await component.renamePasskey('cred-2');
+        expect(fetchMock).toHaveBeenCalledWith('/api/webauthn/edit-options', {
+            method: 'PATCH',
+            headers: {
+                ['Content-Type']: 'application/json',
+                ['Authorization']: 'Bearer uuid-session-token'
+            },
+            body: JSON.stringify({
+                ['credential_id']: 'cred-2',
+                label: 'YubiKey 5 NFC'
+            })
+        });
+        expect(component.passkeys[0].label).toBe('YubiKey 5 NFC');
+
         await component.disableTotp();
         expect(fetchMock).toHaveBeenCalledWith('/api/2fa/totp', {
             method: 'DELETE',

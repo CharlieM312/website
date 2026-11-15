@@ -75,6 +75,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
     private readonly totpVerifyUrl = '/api/2fa/totp/verify';
     private readonly totpDisableUrl = '/api/2fa/totp';
     private readonly webauthnDisableUrl = '/api/webauthn';
+    private readonly webauthnEditOptionsUrl = '/api/webauthn/edit-options';
     private readonly webauthnRegisterOptionsUrl = '/api/webauthn/register-options';
     private readonly webauthnRegisterVerifyUrl = '/api/webauthn/register-verify';
     private readonly webauthnLoginOptionsUrl = '/api/webauthn/login-options';
@@ -317,6 +318,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 })
             });
 
+            this.captureBookmark(optionsRes);
             const optionsBody = (await optionsRes.json()) as Record<string, unknown>;
             if (!optionsRes.ok || typeof optionsBody['challenge'] !== 'string') {
                 this.authError =
@@ -372,6 +374,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 })
             });
 
+            this.captureBookmark(verifyRes);
             this.captureBookmark(verifyRes);
             const verifyBody = (await verifyRes.json()) as Record<string, unknown>;
 
@@ -604,6 +607,56 @@ export class TrackerComponent implements OnInit, OnDestroy {
         }
     }
 
+    async renamePasskey(credentialId: string): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken || !credentialId) return;
+
+        const passkey = this.passkeys.find(p => p.credentialId === credentialId);
+        if (!passkey) return;
+
+        const newLabel =
+            typeof prompt === 'function'
+                ? prompt('Enter a new label for this passkey:', passkey.label)
+                : null;
+        const trimmedLabel = newLabel ? newLabel.trim() : '';
+        if (!trimmedLabel || trimmedLabel === passkey.label) return;
+
+        this.securityError = '';
+        this.securityMessage = '';
+
+        try {
+            const res = await fetch(this.webauthnEditOptionsUrl, {
+                method: 'PATCH',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json',
+                    ['Authorization']: `Bearer ${currentToken}`
+                }),
+                body: JSON.stringify({
+                    ['credential_id']: credentialId,
+                    label: trimmedLabel
+                })
+            });
+
+            this.captureBookmark(res);
+            if (this.sessionToken !== currentToken) return;
+
+            if (res.ok) {
+                passkey.label = trimmedLabel;
+                this.securityMessage = 'Passkey label updated.';
+            } else {
+                const body = (await res.json()) as Record<string, unknown>;
+                this.securityError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : 'Failed to update passkey label.';
+            }
+        } catch {
+            this.securityError = 'Network error while updating passkey label.';
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
     async deletePasskey(credentialId: string): Promise<void> {
         const currentToken = this.sessionToken;
         if (!currentToken || !credentialId) return;
@@ -662,6 +715,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 })
             });
 
+            this.captureBookmark(optionsRes);
             const optionsBody = (await optionsRes.json()) as Record<string, unknown>;
             if (!optionsRes.ok || typeof optionsBody['challenge'] !== 'string') {
                 this.securityError =
@@ -745,6 +799,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 body: JSON.stringify(verifyPayload)
             });
 
+            this.captureBookmark(verifyRes);
             const verifyBody = (await verifyRes.json()) as Record<string, unknown>;
             if (verifyRes.ok) {
                 this.webauthnEnabled = true;
