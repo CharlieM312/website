@@ -39,6 +39,13 @@ export interface YearVisitStat {
     uniqueAirports: number;
 }
 
+export interface PasskeyItem {
+    id: number;
+    credentialId: string;
+    label: string;
+    createdAt: string;
+}
+
 export interface TravelStats {
     totalVisits: number;
     uniqueAirports: number;
@@ -85,6 +92,8 @@ export class TrackerComponent implements OnInit, OnDestroy {
     showSecuritySettings = false;
     totpEnabled = false;
     webauthnEnabled = false;
+    passkeys: PasskeyItem[] = [];
+    passkeyLabel = '';
     totpPendingVerification = false;
     totpVerifyCode = '';
     totpSetupSecret = '';
@@ -193,6 +202,8 @@ export class TrackerComponent implements OnInit, OnDestroy {
         this.showSecuritySettings = false;
         this.totpEnabled = false;
         this.webauthnEnabled = false;
+        this.passkeys = [];
+        this.passkeyLabel = '';
         this.totpPendingVerification = false;
         this.totpVerifyCode = '';
         this.totpSetupSecret = '';
@@ -406,8 +417,22 @@ export class TrackerComponent implements OnInit, OnDestroy {
 
             const body = (await res.json()) as Record<string, unknown>;
             if (this.sessionToken !== currentToken) return;
+            const rawPasskeys = Array.isArray(body['passkeys'])
+                ? (body['passkeys'] as Record<string, unknown>[])
+                : [];
+            this.passkeys = rawPasskeys
+                .filter(p => typeof p['credential_id'] === 'string')
+                .map((p, index) => ({
+                    id: typeof p['id'] === 'number' ? p['id'] : index + 1,
+                    credentialId: p['credential_id'] as string,
+                    label:
+                        typeof p['label'] === 'string' && p['label']
+                            ? p['label']
+                            : `Security Key #${index + 1}`,
+                    createdAt: typeof p['created_at'] === 'string' ? p['created_at'] : ''
+                }));
             this.totpEnabled = Boolean(body['totp_enabled']);
-            this.webauthnEnabled = Boolean(body['webauthn_enabled']);
+            this.webauthnEnabled = Boolean(body['webauthn_enabled']) || this.passkeys.length > 0;
         } catch {
             // Non-blocking status check
         } finally {
@@ -563,7 +588,8 @@ export class TrackerComponent implements OnInit, OnDestroy {
 
             if (res.ok) {
                 this.webauthnEnabled = false;
-                this.securityMessage = 'YubiKey / Passkey has been removed.';
+                this.passkeys = [];
+                this.securityMessage = 'All YubiKeys / Passkeys have been removed.';
             } else {
                 const body = (await res.json()) as Record<string, unknown>;
                 this.securityError =
@@ -573,6 +599,44 @@ export class TrackerComponent implements OnInit, OnDestroy {
             }
         } catch {
             this.securityError = 'Network error while removing YubiKey.';
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async deletePasskey(credentialId: string): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken || !credentialId) return;
+        this.securityError = '';
+        this.securityMessage = '';
+
+        try {
+            const res = await fetch(
+                `${this.webauthnDisableUrl}?credential_id=${encodeURIComponent(credentialId)}`,
+                {
+                    method: 'DELETE',
+                    headers: this.getRequestHeaders({
+                        ['Authorization']: `Bearer ${currentToken}`
+                    })
+                }
+            );
+
+            this.captureBookmark(res);
+            if (this.sessionToken !== currentToken) return;
+
+            if (res.ok) {
+                this.passkeys = this.passkeys.filter(p => p.credentialId !== credentialId);
+                this.webauthnEnabled = this.passkeys.length > 0;
+                this.securityMessage = 'Passkey removed.';
+            } else {
+                const body = (await res.json()) as Record<string, unknown>;
+                this.securityError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : 'Failed to remove passkey.';
+            }
+        } catch {
+            this.securityError = 'Network error while removing passkey.';
         } finally {
             this.cdr.detectChanges();
         }
@@ -614,6 +678,16 @@ export class TrackerComponent implements OnInit, OnDestroy {
                       ? window.location.hostname
                       : 'localhost';
 
+            const rawExclude = Array.isArray(optionsBody['excludeCredentials'])
+                ? (optionsBody['excludeCredentials'] as Record<string, unknown>[])
+                : [];
+            const excludeCredentials: PublicKeyCredentialDescriptor[] = rawExclude
+                .filter(c => typeof c['id'] === 'string')
+                .map(c => ({
+                    id: this.base64UrlToUint8Array(c['id'] as string) as unknown as BufferSource,
+                    type: 'public-key'
+                }));
+
             const userBytes = new TextEncoder().encode(this.loggedInUser || 'user');
             const credential = (await navigator.credentials.create({
                 publicKey: {
@@ -627,7 +701,11 @@ export class TrackerComponent implements OnInit, OnDestroy {
                         name: this.loggedInUser,
                         displayName: this.loggedInUser
                     },
-                    pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+                    pubKeyCredParams: [
+                        { alg: -7, type: 'public-key' },
+                        { alg: -257, type: 'public-key' }
+                    ],
+                    excludeCredentials,
                     authenticatorSelection: {
                         userVerification: 'preferred'
                     },
@@ -649,22 +727,30 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 return;
             }
 
+            const verifyPayload: Record<string, string> = {
+                ['credential_id']: credential.id,
+                ['public_key']: this.bufferToBase64Url(spkiBuffer)
+            };
+            const trimmedLabel = this.passkeyLabel.trim();
+            if (trimmedLabel) {
+                verifyPayload['label'] = trimmedLabel;
+            }
+
             const verifyRes = await fetch(this.webauthnRegisterVerifyUrl, {
                 method: 'POST',
                 headers: this.getRequestHeaders({
                     ['Content-Type']: 'application/json',
                     ['Authorization']: `Bearer ${this.sessionToken}`
                 }),
-                body: JSON.stringify({
-                    ['credential_id']: credential.id,
-                    ['public_key']: this.bufferToBase64Url(spkiBuffer)
-                })
+                body: JSON.stringify(verifyPayload)
             });
 
             const verifyBody = (await verifyRes.json()) as Record<string, unknown>;
             if (verifyRes.ok) {
                 this.webauthnEnabled = true;
+                this.passkeyLabel = '';
                 this.securityMessage = 'YubiKey registered! You can now sign in with your security key.';
+                await this.loadTwoFaStatus();
             } else {
                 this.securityError =
                     typeof verifyBody['error'] === 'string'

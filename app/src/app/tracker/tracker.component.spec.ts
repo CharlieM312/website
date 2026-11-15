@@ -220,7 +220,7 @@ describe('TrackerComponent', () => {
         expect(component.totpSetupSecret).toBe('');
     });
 
-    it('should load 2FA status via GET /api/2fa/status and disable TOTP or WebAuthn', async () => {
+    it('should load 2FA status and passkeys via GET /api/2fa/status and delete individual or all passkeys', async () => {
         component.sessionToken = 'uuid-session-token';
 
         fetchMock.mockResolvedValueOnce({
@@ -230,13 +230,53 @@ describe('TrackerComponent', () => {
             json: jest.fn().mockResolvedValue({
                 username: 'CharlieM312',
                 ['totp_enabled']: true,
-                ['webauthn_enabled']: true
+                ['webauthn_enabled']: true,
+                ['passkey_count']: 2,
+                passkeys: [
+                    {
+                        id: 1,
+                        ['credential_id']: 'cred-1',
+                        label: 'YubiKey 5C',
+                        ['created_at']: '2026-11-15 22:30:00'
+                    },
+                    {
+                        id: 2,
+                        ['credential_id']: 'cred-2',
+                        label: 'Backup Key',
+                        ['created_at']: '2026-11-15 22:35:00'
+                    }
+                ]
             })
         });
 
         await component.loadTwoFaStatus();
 
         expect(component.totpEnabled).toBe(true);
+        expect(component.webauthnEnabled).toBe(true);
+        expect(component.passkeys).toEqual([
+            {
+                id: 1,
+                credentialId: 'cred-1',
+                label: 'YubiKey 5C',
+                createdAt: '2026-11-15 22:30:00'
+            },
+            {
+                id: 2,
+                credentialId: 'cred-2',
+                label: 'Backup Key',
+                createdAt: '2026-11-15 22:35:00'
+            }
+        ]);
+
+        await component.deletePasskey('cred-1');
+        expect(fetchMock).toHaveBeenCalledWith('/api/webauthn?credential_id=cred-1', {
+            method: 'DELETE',
+            headers: {
+                ['Authorization']: 'Bearer uuid-session-token'
+            }
+        });
+        expect(component.passkeys).toHaveLength(1);
+        expect(component.passkeys[0].credentialId).toBe('cred-2');
         expect(component.webauthnEnabled).toBe(true);
 
         await component.disableTotp();
@@ -256,6 +296,82 @@ describe('TrackerComponent', () => {
             }
         });
         expect(component.webauthnEnabled).toBe(false);
+        expect(component.passkeys).toEqual([]);
+    });
+
+    it('should register a passkey with an optional label via POST /api/webauthn/register-verify', async () => {
+        component.sessionToken = 'uuid-session-token';
+        component.loggedInUser = 'CharlieM312';
+        component.passkeyLabel = 'My YubiKey 5C';
+
+        const createMock = jest.fn().mockResolvedValue({
+            id: 'new-cred-id',
+            response: {
+                getPublicKey: () => new Uint8Array([10, 20, 30]).buffer
+            }
+        });
+        Object.defineProperty(navigator, 'credentials', {
+            value: { get: jest.fn(), create: createMock },
+            configurable: true
+        });
+
+        fetchMock
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({
+                    challenge: 'Y2hhbGxlbmdl',
+                    rpId: 'localhost',
+                    excludeCredentials: [{ id: 'Y3JlZC0x', type: 'public-key' }]
+                })
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({
+                    success: true,
+                    ['passkey_count']: 1
+                })
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({
+                    username: 'CharlieM312',
+                    ['totp_enabled']: false,
+                    ['webauthn_enabled']: true,
+                    passkeys: [
+                        {
+                            id: 1,
+                            ['credential_id']: 'new-cred-id',
+                            label: 'My YubiKey 5C',
+                            ['created_at']: '2026-11-15 22:40:00'
+                        }
+                    ]
+                })
+            });
+
+        await component.registerYubiKey();
+
+        expect(createMock).toHaveBeenCalled();
+        expect(fetchMock).toHaveBeenCalledWith('/api/webauthn/register-verify', {
+            method: 'POST',
+            headers: {
+                ['Content-Type']: 'application/json',
+                ['Authorization']: 'Bearer uuid-session-token'
+            },
+            body: JSON.stringify({
+                ['credential_id']: 'new-cred-id',
+                ['public_key']: 'ChQe',
+                label: 'My YubiKey 5C'
+            })
+        });
+        expect(component.passkeyLabel).toBe('');
+        expect(component.passkeys).toHaveLength(1);
+        expect(component.passkeys[0].label).toBe('My YubiKey 5C');
     });
 
     it('should clear session and call POST /api/logout on onLogout', async () => {

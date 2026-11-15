@@ -89,7 +89,7 @@
                         Authenticator: {{ totpEnabled ? 'Enabled' : 'Not set' }}
                     </span>
                     <span class="meta-pill" [class.active-pill]="webauthnEnabled">
-                        YubiKey / Passkey: {{ webauthnEnabled ? 'Registered' : 'Not set' }}
+                        YubiKey / Passkeys: {{ passkeys.length > 0 ? passkeys.length + ' registered' : (webauthnEnabled ? 'Registered' : 'Not set') }}
                     </span>
                 </div>
                 @if (securityError) {
@@ -102,22 +102,47 @@
                     <button type="button" (click)="setupTotp()">
                         {{ totpEnabled ? 'Reset Microsoft Authenticator' : 'Setup Microsoft Authenticator' }}
                     </button>
+                    @if (totpEnabled) {
+                        <button type="button" class="danger" (click)="disableTotp()">
+                            Disable Authenticator
+                        </button>
+                    }
+                </div>
+                <div class="passkey-enroll-row">
+                    <input
+                        type="text"
+                        name="passkeyLabel"
+                        [(ngModel)]="passkeyLabel"
+                        placeholder="Passkey Label (Optional, e.g., YubiKey 5C)">
                     <button type="button" class="secondary" (click)="registerYubiKey()">
-                        {{ webauthnEnabled ? 'Replace YubiKey / Passkey' : 'Register YubiKey / Passkey' }}
+                        {{ webauthnEnabled ? 'Add Passkey / YubiKey' : 'Register YubiKey / Passkey' }}
                     </button>
                 </div>
-                @if (totpEnabled || webauthnEnabled) {
+                @if (passkeys.length > 0) {
+                    <div class="passkey-list">
+                        @for (pk of passkeys; track pk.credentialId || pk.id) {
+                            <div class="passkey-item">
+                                <div class="passkey-info">
+                                    <strong>{{ pk.label }}</strong>
+                                    @if (pk.createdAt) {
+                                        <small class="passkey-date">Added {{ pk.createdAt }}</small>
+                                    }
+                                </div>
+                                <button
+                                    type="button"
+                                    class="small-btn danger"
+                                    (click)="deletePasskey(pk.credentialId)">
+                                    Delete
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+                @if (webauthnEnabled && passkeys.length > 1) {
                     <div class="form-actions">
-                        @if (totpEnabled) {
-                            <button type="button" class="small-btn danger" (click)="disableTotp()">
-                                Disable Authenticator
-                            </button>
-                        }
-                        @if (webauthnEnabled) {
-                            <button type="button" class="small-btn danger" (click)="disableWebAuthn()">
-                                Remove YubiKey
-                            </button>
-                        }
+                        <button type="button" class="small-btn danger" (click)="disableWebAuthn()">
+                            Remove All Passkeys
+                        </button>
                     </div>
                 }
                 @if (totpSetupSecret) {

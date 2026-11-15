@@ -74,6 +74,41 @@
         margin-bottom: 10px;
     }
 
+    .passkey-enroll-row {
+        display: grid;
+        grid-template-columns: 3fr 2fr;
+        gap: 8px;
+        margin-top: 4px;
+    }
+
+    .passkey-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin: 10px 0;
+
+        .passkey-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            border: 1px solid #2d3748;
+            border-radius: 6px;
+            background: rgba(128, 128, 128, 0.08);
+
+            .passkey-info {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+
+                .passkey-date {
+                    opacity: 0.75;
+                    font-size: 0.78rem;
+                }
+            }
+        }
+    }
+
     .auth-panel,
     .security-panel {
         border: 1px solid #2d3748;
