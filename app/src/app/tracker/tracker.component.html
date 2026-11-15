@@ -75,6 +75,15 @@
                 </div>
                 @if (totpSetupSecret) {
                     <div class="totp-setup-box">
+                        @if (totpQrDataUrl) {
+                            <div class="qr-container">
+                                <img
+                                    [src]="totpQrDataUrl"
+                                    alt="Scan with Microsoft Authenticator"
+                                    width="200"
+                                    height="200">
+                            </div>
+                        }
                         <p><strong>Authenticator Base32 Secret:</strong> <code>{{ totpSetupSecret }}</code></p>
                         @if (totpSetupUri) {
                             <p><small>URI: <code>{{ totpSetupUri }}</code></small></p>

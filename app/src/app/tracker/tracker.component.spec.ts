@@ -185,6 +185,7 @@ describe('TrackerComponent', () => {
         });
         expect(component.totpSetupSecret).toBe('JBSWY3DPEHPK3PXP');
         expect(component.totpSetupUri).toContain('otpauth://totp/');
+        expect(component.totpQrDataUrl).toMatch(/^data:image\/png;base64,/);
     });
 
     it('should clear session and call POST /api/logout on onLogout', async () => {

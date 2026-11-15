@@ -3,6 +3,7 @@ import type { OnDestroy, OnInit } from '@angular/core';
 import { DarkModeService } from '../services/dark-mode/dark-mode.service';
 import { CookieService } from 'ngx-cookie-service';
 import { Subscription } from 'rxjs';
+import { generateQrCodeDataUrl } from './qr-code.util';
 
 export interface VisitItem {
     id: number;
@@ -55,6 +56,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
     showSecuritySettings = false;
     totpSetupSecret = '';
     totpSetupUri = '';
+    totpQrDataUrl = '';
     securityMessage = '';
     securityError = '';
 
@@ -158,6 +160,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
         this.showSecuritySettings = false;
         this.totpSetupSecret = '';
         this.totpSetupUri = '';
+        this.totpQrDataUrl = '';
         if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(this.tokenStorageKey);
             localStorage.removeItem(this.userStorageKey);
@@ -345,26 +348,32 @@ export class TrackerComponent implements OnInit, OnDestroy {
     }
 
     async setupTotp(): Promise<void> {
-        if (!this.sessionToken) return;
+        const setupToken = this.sessionToken;
+        if (!setupToken) return;
         this.securityError = '';
         this.securityMessage = '';
+        this.totpQrDataUrl = '';
 
         try {
             const res = await fetch(this.totpSetupUrl, {
                 method: 'POST',
                 headers: this.getRequestHeaders({
                     ['Content-Type']: 'application/json',
-                    ['Authorization']: `Bearer ${this.sessionToken}`
+                    ['Authorization']: `Bearer ${setupToken}`
                 })
             });
 
             const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== setupToken) return;
             if (res.ok && typeof body['secret'] === 'string') {
                 this.totpSetupSecret = body['secret'];
                 this.totpSetupUri =
-                    typeof body['otpauth_url'] === 'string' ? body['otpauth_url'] : '';
+                    typeof body['otpauth_url'] === 'string'
+                        ? body['otpauth_url']
+                        : `otpauth://totp/AirportTracker:${encodeURIComponent(this.loggedInUser || 'User')}?secret=${this.totpSetupSecret}&issuer=AirportTracker`;
+                this.totpQrDataUrl = generateQrCodeDataUrl(this.totpSetupUri);
                 this.securityMessage =
-                    'Add this secret key to Microsoft Authenticator (or Yubico Authenticator).';
+                    'Scan the QR code below or enter the secret key in Microsoft Authenticator (or Yubico Authenticator).';
             } else {
                 this.securityError =
                     typeof body['error'] === 'string'
