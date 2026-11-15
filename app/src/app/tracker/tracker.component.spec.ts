@@ -281,6 +281,24 @@ describe('TrackerComponent', () => {
         expect(component.submitSuccess).toBe('Visit updated successfully.');
     });
 
+    it('should ignore startEdit for rows without a persisted id', () => {
+        component.startEdit({
+            id: 0,
+            username: 'Anonymous',
+            iataCode: 'LGW',
+            originIata: '',
+            flightNumber: '',
+            distanceKm: null,
+            airportName: 'Unknown Airport',
+            city: '',
+            country: '',
+            visitDate: '2026-11-16',
+            notes: ''
+        });
+
+        expect(component.editingVisitId).toBeNull();
+    });
+
     it('should display API error message when onSubmit fails', async () => {
         component.apiToken = 'bad-token';
         component.username = 'CharlieM312';
@@ -303,6 +321,31 @@ describe('TrackerComponent', () => {
             'Invalid or unknown iata_code \'XYZ\'. It must match an airport in /api/airports.'
         );
         expect(component.username).toBe('CharlieM312');
+    });
+
+    it('should refresh using applied username scope after submit', async () => {
+        component.apiToken = 'secret-token';
+        component.appliedUsernameFilter = 'CharlieM312';
+        component.filterUsername = 'DifferentUser';
+        component.username = 'CharlieM312';
+        component.iataCode = 'HAM';
+        component.visitDate = '2026-11-15';
+
+        fetchMock
+            .mockResolvedValueOnce({
+                ok: true,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({})
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue([])
+            });
+
+        await component.onSubmit();
+
+        expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/visits?username=CharlieM312', undefined);
     });
 
     it('should delete a visit by id when apiToken is provided', async () => {
@@ -335,5 +378,106 @@ describe('TrackerComponent', () => {
         });
         expect(component.visits).toHaveLength(0);
         expect(component.submitSuccess).toBe('Visit deleted.');
+    });
+
+    it('should clear edit state when deleting the active edit row', async () => {
+        component.apiToken = 'secret-token';
+        component.editingVisitId = 1;
+        component.username = 'CharlieM312';
+        component.iataCode = 'HAM';
+        component.visitDate = '2026-09-15';
+        component.notes = 'Editing';
+        component.visits = [
+            {
+                id: 1,
+                username: 'CharlieM312',
+                iataCode: 'HAM',
+                originIata: '',
+                flightNumber: '',
+                distanceKm: null,
+                airportName: 'Hamburg Airport',
+                city: '',
+                country: '',
+                visitDate: '2026-09-15',
+                notes: 'Editing'
+            }
+        ];
+
+        await component.deleteVisit(1);
+
+        expect(component.editingVisitId).toBeNull();
+        expect(component.username).toBe('');
+        expect(component.iataCode).toBe('');
+    });
+
+    it('should keep newest visits response when filter is changed mid-flight', async () => {
+        let resolveFiltered: ((value: unknown) => void) | undefined;
+        let resolveAll: ((value: unknown) => void) | undefined;
+
+        const filteredPromise = new Promise(resolve => {
+            resolveFiltered = resolve;
+        });
+        const allPromise = new Promise(resolve => {
+            resolveAll = resolve;
+        });
+
+        fetchMock.mockImplementation((url: string) => {
+            if (url === '/api/visits?username=CharlieM312') {
+                return filteredPromise;
+            }
+            if (url === '/api/visits') {
+                return allPromise;
+            }
+            if (url === '/api/stats') {
+                return Promise.resolve({
+                    ok: true,
+                    headers: { get: jest.fn().mockReturnValue(null) },
+                    json: jest.fn().mockResolvedValue({})
+                });
+            }
+            return Promise.resolve({
+                ok: true,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue([])
+            });
+        });
+
+        component.filterUsername = 'CharlieM312';
+        const filteredLoad = component.loadUserVisits();
+
+        component.filterUsername = '';
+        const showAllLoad = component.clearUserFilter();
+
+        resolveAll?.({
+            ok: true,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue([
+                {
+                    id: 9,
+                    username: 'All',
+                    ['iata_code']: 'JFK',
+                    ['visit_date']: '2026-11-16'
+                }
+            ])
+        });
+        await showAllLoad;
+
+        resolveFiltered?.({
+            ok: true,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue([
+                {
+                    id: 3,
+                    username: 'CharlieM312',
+                    ['iata_code']: 'HAM',
+                    ['visit_date']: '2026-10-01'
+                }
+            ])
+        });
+        await filteredLoad;
+
+        expect(component.visits).toHaveLength(1);
+        expect(component.visits[0].id).toBe(9);
+        expect(component.appliedUsernameFilter).toBe('');
     });
 });

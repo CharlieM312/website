@@ -41,13 +41,13 @@
         &.error-banner {
             background: rgba(220, 38, 38, 0.15);
             border: 1px solid #dc2626;
-            color: #ef4444;
+            color: inherit;
         }
 
         &.success-banner {
             background: rgba(22, 163, 74, 0.15);
             border: 1px solid #16a34a;
-            color: #22c55e;
+            color: inherit;
         }
     }
 

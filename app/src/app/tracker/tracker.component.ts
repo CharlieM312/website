@@ -36,6 +36,8 @@ export class TrackerComponent implements OnInit, OnDestroy {
     private readonly apiUrl = '/api/visits';
     private readonly statsUrl = '/api/stats';
     private subscriber = new Subscription();
+    private visitsRequestGeneration = 0;
+    private statsRequestGeneration = 0;
 
     apiToken = '';
     username = '';
@@ -57,6 +59,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
     error = '';
     submitError = '';
     submitSuccess = '';
+    appliedUsernameFilter = '';
 
     constructor(
         private darkModeService: DarkModeService,
@@ -138,6 +141,8 @@ export class TrackerComponent implements OnInit, OnDestroy {
     }
 
     async loadStats(username?: string): Promise<void> {
+        const requestGeneration = ++this.statsRequestGeneration;
+
         try {
             const query = username ? `?username=${encodeURIComponent(username)}` : '';
             const res = await fetch(
@@ -146,7 +151,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
                     ? { headers: this.getRequestHeaders() }
                     : undefined
             );
-            if (!res.ok) return;
+            if (requestGeneration !== this.statsRequestGeneration || !res.ok) return;
             this.captureBookmark(res);
 
             const raw = (await res.json()) as Record<string, unknown>;
@@ -160,11 +165,14 @@ export class TrackerComponent implements OnInit, OnDestroy {
         } catch {
             // Stats are non-blocking; ignore errors if endpoint is unavailable
         } finally {
-            this.cdr.detectChanges();
+            if (requestGeneration === this.statsRequestGeneration) {
+                this.cdr.detectChanges();
+            }
         }
     }
 
     async loadVisits(): Promise<void> {
+        const requestGeneration = ++this.visitsRequestGeneration;
         this.loading = true;
         this.error = '';
 
@@ -174,14 +182,20 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 this.apiUrl,
                 Object.keys(headers).length > 0 ? { headers } : undefined
             );
+            if (requestGeneration !== this.visitsRequestGeneration) return;
             this.captureBookmark(res);
             const rawVisits = (await res.json()) as Record<string, unknown>[];
             this.visits = this.mapVisits(rawVisits);
+            this.appliedUsernameFilter = '';
         } catch {
-            this.error = 'Failed to load visits.';
+            if (requestGeneration === this.visitsRequestGeneration) {
+                this.error = 'Failed to load visits.';
+            }
         } finally {
-            this.loading = false;
-            this.cdr.detectChanges();
+            if (requestGeneration === this.visitsRequestGeneration) {
+                this.loading = false;
+                this.cdr.detectChanges();
+            }
         }
     }
 
@@ -193,6 +207,12 @@ export class TrackerComponent implements OnInit, OnDestroy {
             return;
         }
 
+        await this.loadVisitsForUsername(targetUsername);
+    }
+
+    private async loadVisitsForUsername(targetUsername: string): Promise<void> {
+        const requestGeneration = ++this.visitsRequestGeneration;
+
         this.loading = true;
         this.error = '';
 
@@ -202,15 +222,21 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 `${this.apiUrl}?username=${encodeURIComponent(targetUsername)}`,
                 Object.keys(headers).length > 0 ? { headers } : undefined
             );
+            if (requestGeneration !== this.visitsRequestGeneration) return;
             this.captureBookmark(res);
             const rawVisits = (await res.json()) as Record<string, unknown>[];
             this.visits = this.mapVisits(rawVisits);
+            this.appliedUsernameFilter = targetUsername;
             void this.loadStats(targetUsername);
         } catch {
-            this.error = 'Failed to load user visits.';
+            if (requestGeneration === this.visitsRequestGeneration) {
+                this.error = 'Failed to load user visits.';
+            }
         } finally {
-            this.loading = false;
-            this.cdr.detectChanges();
+            if (requestGeneration === this.visitsRequestGeneration) {
+                this.loading = false;
+                this.cdr.detectChanges();
+            }
         }
     }
 
@@ -221,6 +247,10 @@ export class TrackerComponent implements OnInit, OnDestroy {
     }
 
     startEdit(visit: VisitItem): void {
+        if (this.submitting || !visit.id) {
+            return;
+        }
+
         this.editingVisitId = visit.id;
         this.username = visit.username === 'Anonymous' ? '' : visit.username;
         this.originIata = visit.originIata;
@@ -234,6 +264,10 @@ export class TrackerComponent implements OnInit, OnDestroy {
     }
 
     cancelEdit(): void {
+        if (this.submitting) {
+            return;
+        }
+
         this.editingVisitId = null;
         this.resetFormFields();
         this.submitError = '';
@@ -293,9 +327,9 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 this.submitSuccess = isEditing ? 'Visit updated successfully.' : 'Visit logged successfully.';
                 this.cdr.detectChanges();
 
-                const activeFilter = this.filterUsername.trim();
+                const activeFilter = this.appliedUsernameFilter;
                 if (activeFilter) {
-                    await this.loadUserVisits();
+                    await this.loadVisitsForUsername(activeFilter);
                 } else {
                     await this.loadVisits();
                     await this.loadStats();
@@ -344,8 +378,11 @@ export class TrackerComponent implements OnInit, OnDestroy {
 
             if (res.ok) {
                 this.visits = this.visits.filter(v => v.id !== id);
+                if (this.editingVisitId === id) {
+                    this.cancelEdit();
+                }
                 this.submitSuccess = 'Visit deleted.';
-                void this.loadStats(this.filterUsername.trim() || undefined);
+                void this.loadStats(this.appliedUsernameFilter || undefined);
             } else {
                 this.submitError = 'Failed to delete visit. Check your API Secret Token.';
             }
