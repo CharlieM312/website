@@ -389,6 +389,260 @@ describe('TrackerComponent', () => {
         expect(component.passkeys[0].label).toBe('My YubiKey 5C');
     });
 
+    it('should submit an account request via POST /api/register and show pendingApprovalMessage', async () => {
+        component.loginUsername = 'new_traveler';
+        component.loginPassword = 'password123';
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 202,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                ['pending_approval']: true,
+                status: 'pending',
+                username: 'new_traveler',
+                message: 'Account request submitted. An administrator must approve your account before you can sign in.'
+            })
+        });
+
+        await component.onRequestAccount();
+
+        expect(fetchMock).toHaveBeenCalledWith('/api/register', {
+            method: 'POST',
+            headers: {
+                ['Content-Type']: 'application/json'
+            },
+            body: JSON.stringify({
+                username: 'new_traveler',
+                password: 'password123'
+            })
+        });
+        expect(component.pendingApprovalMessage).toContain('approve');
+    });
+
+    it('should handle OAuth sign-in and linking/unlinking via /api/oauth/login and /api/oauth/link', async () => {
+        component.loginUsername = 'CharlieM312';
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                token: 'oauth-token-123',
+                username: 'CharlieM312',
+                ['is_admin']: true,
+                status: 'approved'
+            })
+        });
+
+        await component.onOAuthLogin('github');
+
+        expect(fetchMock).toHaveBeenCalledWith('/api/oauth/login', {
+            method: 'POST',
+            headers: {
+                ['Content-Type']: 'application/json'
+            },
+            body: JSON.stringify({
+                provider: 'github',
+                ['provider_user_id']: 'CharlieM312',
+                username: 'CharlieM312',
+                ['display_name']: 'CharlieM312'
+            })
+        });
+        expect(component.sessionToken).toBe('oauth-token-123');
+        expect(component.isAdmin).toBe(true);
+
+        jest.spyOn(window, 'prompt').mockReturnValue('charlie@github.com');
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                state: 'csrf-state-1',
+                providers: {
+                    github: { enabled: true, ['client_id']: null }
+                }
+            })
+        });
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                ['oauth_accounts']: [
+                    {
+                        id: 1,
+                        provider: 'github',
+                        ['provider_user_id']: 'charlie@github.com',
+                        ['display_name']: 'charlie@github.com',
+                        ['created_at']: '2026-11-16'
+                    }
+                ]
+            })
+        });
+
+        await component.linkOAuthProvider('github');
+        expect(component.oauthAccounts).toHaveLength(1);
+        expect(component.isOAuthProviderLinked('github')).toBe(true);
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                ['oauth_accounts']: []
+            })
+        });
+
+        await component.unlinkOAuthProvider('github');
+        expect(component.oauthAccounts).toHaveLength(0);
+
+        component.sessionToken = '';
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                token: 'github-callback-token',
+                username: 'CharlieM312',
+                ['is_admin']: true,
+                status: 'approved'
+            })
+        });
+
+        await component.handleOAuthCallback('?code=gh-auth-code&state=csrf-state-1');
+        expect(component.sessionToken).toBe('github-callback-token');
+    });
+
+    it('should load, approve/reject, and delete users via /api/admin/users when admin', async () => {
+        component.sessionToken = 'admin-token';
+        component.loggedInUser = 'CharlieM312';
+        component.isAdmin = true;
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                ['pending_count']: 1,
+                ['total_count']: 2,
+                users: [
+                    {
+                        id: 2,
+                        username: 'pending_user',
+                        role: 'user',
+                        status: 'pending',
+                        ['oauth_accounts']: [{ id: 1, provider: 'google', ['provider_user_id']: 'g-1' }]
+                    },
+                    {
+                        id: 1,
+                        username: 'CharlieM312',
+                        role: 'admin',
+                        status: 'approved',
+                        ['oauth_accounts']: []
+                    }
+                ]
+            })
+        });
+
+        await component.loadAdminUsers();
+        expect(component.pendingUserCount).toBe(1);
+        expect(component.adminUsers).toHaveLength(2);
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                username: 'pending_user',
+                status: 'approved',
+                role: 'user'
+            })
+        });
+
+        await component.updateUserStatus('pending_user', 'approved');
+        expect(fetchMock).toHaveBeenCalledWith('/api/admin/users/pending_user', {
+            method: 'PATCH',
+            headers: {
+                ['Content-Type']: 'application/json',
+                ['Authorization']: 'Bearer admin-token'
+            },
+            body: JSON.stringify({ status: 'approved' })
+        });
+        expect(component.adminUsers[0].status).toBe('approved');
+        expect(component.pendingUserCount).toBe(0);
+
+        await component.deleteAdminUser('pending_user');
+        expect(fetchMock).toHaveBeenCalledWith('/api/admin/users/pending_user', {
+            method: 'DELETE',
+            headers: {
+                ['Authorization']: 'Bearer admin-token'
+            }
+        });
+        expect(component.adminUsers).toHaveLength(1);
+
+        jest.spyOn(window, 'prompt').mockReturnValue('CharlieM');
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                ['old_username']: 'CharlieM312',
+                username: 'CharlieM'
+            })
+        });
+
+        await component.renameAdminUser('CharlieM312');
+        expect(fetchMock).toHaveBeenCalledWith('/api/admin/users/CharlieM312', {
+            method: 'PATCH',
+            headers: {
+                ['Content-Type']: 'application/json',
+                ['Authorization']: 'Bearer admin-token'
+            },
+            body: JSON.stringify({ ['new_username']: 'CharlieM' })
+        });
+        expect(component.adminUsers[0].username).toBe('CharlieM');
+        expect(component.loggedInUser).toBe('CharlieM');
+    });
+
+    it('should update own username via PATCH /api/user/username', async () => {
+        component.sessionToken = 'uuid-session-token';
+        component.loggedInUser = 'CharlieM312';
+        component.newUsernameInput = 'CharlieM';
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                ['old_username']: 'CharlieM312',
+                username: 'CharlieM'
+            })
+        });
+
+        await component.updateOwnUsername();
+
+        expect(fetchMock).toHaveBeenCalledWith('/api/user/username', {
+            method: 'PATCH',
+            headers: {
+                ['Content-Type']: 'application/json',
+                ['Authorization']: 'Bearer uuid-session-token'
+            },
+            body: JSON.stringify({ ['new_username']: 'CharlieM' })
+        });
+        expect(component.loggedInUser).toBe('CharlieM');
+        expect(component.newUsernameInput).toBe('');
+        expect(localStorage.getItem('tracker_username')).toBe('CharlieM');
+    });
+
     it('should clear session and call POST /api/logout on onLogout', async () => {
         component.sessionToken = 'uuid-session-token';
         component.loggedInUser = 'CharlieM312';

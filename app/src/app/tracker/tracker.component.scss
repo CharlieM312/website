@@ -65,6 +65,46 @@
             border-color: #16a34a;
             color: #22c55e;
         }
+
+        &.pending-pill {
+            border-color: #d97706;
+            color: #f59e0b;
+        }
+    }
+
+    .oauth-divider {
+        text-align: center;
+        margin: 12px 0 8px;
+        font-size: 0.85rem;
+        opacity: 0.75;
+    }
+
+    .oauth-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-top: 6px;
+
+        .oauth-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #2d3748;
+            font-size: 0.88rem;
+            padding: 9px 12px;
+            border: 1px solid #4a5568;
+
+            .oauth-icon {
+                width: 16px;
+                height: 16px;
+                flex-shrink: 0;
+            }
+
+            &:hover:not(:disabled) {
+                background: #1a202c;
+            }
+        }
     }
 
     .twofa-status-row {
@@ -189,6 +229,12 @@
             background: rgba(22, 163, 74, 0.15);
             border: 1px solid #16a34a;
             color: #22c55e;
+        }
+
+        &.pending-banner {
+            background: rgba(217, 119, 6, 0.15);
+            border: 1px solid #d97706;
+            color: #f59e0b;
         }
     }
 

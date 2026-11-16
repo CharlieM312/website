@@ -46,6 +46,26 @@ export interface PasskeyItem {
     createdAt: string;
 }
 
+export interface OAuthAccountItem {
+    id: number;
+    provider: string;
+    providerUserId: string;
+    email: string;
+    displayName: string;
+    createdAt: string;
+}
+
+export interface AdminUserItem {
+    id: number;
+    username: string;
+    email: string;
+    role: string;
+    status: string;
+    totpEnabled: boolean;
+    oauthAccounts: OAuthAccountItem[];
+    createdAt: string;
+}
+
 export interface TravelStats {
     totalVisits: number;
     uniqueAirports: number;
@@ -69,7 +89,13 @@ export class TrackerComponent implements OnInit, OnDestroy {
     private readonly apiUrl = '/api/visits';
     private readonly statsUrl = '/api/stats';
     private readonly loginUrl = '/api/login';
+    private readonly registerUrl = '/api/register';
     private readonly logoutUrl = '/api/logout';
+    private readonly oauthProvidersUrl = '/api/oauth/providers';
+    private readonly oauthLoginUrl = '/api/oauth/login';
+    private readonly oauthLinkUrl = '/api/oauth/link';
+    private readonly updateUsernameUrl = '/api/user/username';
+    private readonly adminUsersUrl = '/api/admin/users';
     private readonly twoFaStatusUrl = '/api/2fa/status';
     private readonly totpSetupUrl = '/api/2fa/totp/setup';
     private readonly totpVerifyUrl = '/api/2fa/totp/verify';
@@ -82,18 +108,26 @@ export class TrackerComponent implements OnInit, OnDestroy {
     private readonly webauthnLoginVerifyUrl = '/api/webauthn/login-verify';
     private readonly tokenStorageKey = 'tracker_session_token';
     private readonly userStorageKey = 'tracker_username';
+    private readonly adminStorageKey = 'tracker_is_admin';
+    private readonly oauthModeStorageKey = 'tracker_oauth_mode';
     private subscriber = new Subscription();
+
+    readonly oauthProviders = ['github', 'google', 'microsoft'];
 
     loginUsername = '';
     loginPassword = '';
     totpCode = '';
     sessionToken = '';
     loggedInUser = '';
+    isAdmin = false;
+    pendingApprovalMessage = '';
 
     showSecuritySettings = false;
+    newUsernameInput = '';
     totpEnabled = false;
     webauthnEnabled = false;
     passkeys: PasskeyItem[] = [];
+    oauthAccounts: OAuthAccountItem[] = [];
     passkeyLabel = '';
     totpPendingVerification = false;
     totpVerifyCode = '';
@@ -102,6 +136,12 @@ export class TrackerComponent implements OnInit, OnDestroy {
     totpQrDataUrl = '';
     securityMessage = '';
     securityError = '';
+
+    showAdminPanel = false;
+    adminUsers: AdminUserItem[] = [];
+    pendingUserCount = 0;
+    adminMessage = '';
+    adminError = '';
 
     filterUsername = '';
     originIata = '';
@@ -138,6 +178,9 @@ export class TrackerComponent implements OnInit, OnDestroy {
         if (typeof localStorage !== 'undefined') {
             this.sessionToken = localStorage.getItem(this.tokenStorageKey) || '';
             this.loggedInUser = localStorage.getItem(this.userStorageKey) || '';
+            this.isAdmin =
+                localStorage.getItem(this.adminStorageKey) === 'true' ||
+                this.loggedInUser.toLowerCase() === 'charliem312';
         }
 
         this.subscriber.add(
@@ -155,6 +198,10 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 }
             })
         );
+
+        if (typeof window !== 'undefined' && window.location?.search?.includes('code=')) {
+            void this.handleOAuthCallback(window.location.search);
+        }
 
         void this.loadVisits();
         void this.loadStats();
@@ -183,27 +230,38 @@ export class TrackerComponent implements OnInit, OnDestroy {
         }
     }
 
-    private saveSession(token: string, username: string): void {
+    private saveSession(token: string, username: string, isAdminFlag?: boolean): void {
         this.sessionToken = token;
         this.loggedInUser = username;
+        this.isAdmin = Boolean(isAdminFlag) || username.toLowerCase() === 'charliem312';
         this.loginPassword = '';
         this.loginUsername = '';
         this.totpCode = '';
+        this.pendingApprovalMessage = '';
 
         if (typeof localStorage !== 'undefined') {
             localStorage.setItem(this.tokenStorageKey, this.sessionToken);
             localStorage.setItem(this.userStorageKey, this.loggedInUser);
+            localStorage.setItem(this.adminStorageKey, this.isAdmin ? 'true' : 'false');
         }
     }
 
     private clearSession(): void {
         this.sessionToken = '';
         this.loggedInUser = '';
+        this.isAdmin = false;
         this.editingVisitId = null;
         this.showSecuritySettings = false;
+        this.newUsernameInput = '';
+        this.showAdminPanel = false;
+        this.adminUsers = [];
+        this.pendingUserCount = 0;
+        this.adminMessage = '';
+        this.adminError = '';
         this.totpEnabled = false;
         this.webauthnEnabled = false;
         this.passkeys = [];
+        this.oauthAccounts = [];
         this.passkeyLabel = '';
         this.totpPendingVerification = false;
         this.totpVerifyCode = '';
@@ -213,7 +271,24 @@ export class TrackerComponent implements OnInit, OnDestroy {
         if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(this.tokenStorageKey);
             localStorage.removeItem(this.userStorageKey);
+            localStorage.removeItem(this.adminStorageKey);
         }
+    }
+
+    private mapOAuthAccounts(rawList: unknown): OAuthAccountItem[] {
+        if (!Array.isArray(rawList)) return [];
+        return (rawList as Record<string, unknown>[])
+            .filter(item => typeof item['provider'] === 'string')
+            .map((item, idx) => ({
+                id: typeof item['id'] === 'number' ? item['id'] : idx + 1,
+                provider: String(item['provider']).toLowerCase(),
+                providerUserId:
+                    typeof item['provider_user_id'] === 'string' ? item['provider_user_id'] : '',
+                email: typeof item['email'] === 'string' ? item['email'] : '',
+                displayName:
+                    typeof item['display_name'] === 'string' ? item['display_name'] : '',
+                createdAt: typeof item['created_at'] === 'string' ? item['created_at'] : ''
+            }));
     }
 
     private bufferToBase64Url(buffer: ArrayBuffer): string {
@@ -274,7 +349,12 @@ export class TrackerComponent implements OnInit, OnDestroy {
                     typeof body['username'] === 'string' && body['username']
                         ? body['username']
                         : trimmedUser;
-                this.saveSession(body['token'], resolvedUser);
+                this.saveSession(body['token'], resolvedUser, Boolean(body['is_admin']));
+            } else if (body['pending_approval'] === true || body['status'] === 'pending') {
+                this.pendingApprovalMessage =
+                    typeof body['error'] === 'string' && body['error']
+                        ? body['error']
+                        : 'Your account is awaiting admin approval before you can sign in.';
             } else {
                 this.authError =
                     typeof body['error'] === 'string' && body['error']
@@ -283,6 +363,284 @@ export class TrackerComponent implements OnInit, OnDestroy {
             }
         } catch {
             this.authError = 'Network error: Unable to sign in.';
+        } finally {
+            this.authenticating = false;
+            this.cdr.detectChanges();
+        }
+    }
+
+    async onRequestAccount(): Promise<void> {
+        const trimmedUser = this.loginUsername.trim();
+        if (!trimmedUser || !this.loginPassword) {
+            this.authError = 'Enter a username and password to request an account.';
+            this.cdr.detectChanges();
+            return;
+        }
+
+        this.authenticating = true;
+        this.authError = '';
+        this.pendingApprovalMessage = '';
+
+        try {
+            const res = await fetch(this.registerUrl, {
+                method: 'POST',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json'
+                }),
+                body: JSON.stringify({
+                    username: trimmedUser,
+                    password: this.loginPassword
+                })
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+
+            if (res.ok || res.status === 202 || body['pending_approval'] === true) {
+                this.loginPassword = '';
+                this.pendingApprovalMessage =
+                    typeof body['message'] === 'string' && body['message']
+                        ? body['message']
+                        : 'Account request submitted. An administrator must approve your account before you can sign in.';
+            } else {
+                this.authError =
+                    typeof body['error'] === 'string' && body['error']
+                        ? body['error']
+                        : 'Failed to submit account request.';
+            }
+        } catch {
+            this.authError = 'Network error: Unable to request account.';
+        } finally {
+            this.authenticating = false;
+            this.cdr.detectChanges();
+        }
+    }
+
+    private getRedirectUri(): string {
+        if (typeof window !== 'undefined' && window.location) {
+            return `${window.location.origin}${window.location.pathname}`;
+        }
+        return 'https://charlie-meader.com/tracker';
+    }
+
+    private async tryStartGitHubRedirect(mode: 'login' | 'link'): Promise<boolean> {
+        const redirectUri = this.getRedirectUri();
+        try {
+            const res = await fetch(
+                `${this.oauthProvidersUrl}?provider=github&redirect_uri=${encodeURIComponent(redirectUri)}`,
+                {
+                    headers: this.getRequestHeaders()
+                }
+            );
+            if (!res.ok) return false;
+            this.captureBookmark(res);
+
+            const body = (await res.json()) as Record<string, unknown>;
+            const providers = body['providers'] as Record<string, Record<string, unknown>> | undefined;
+            const githubConfig = providers?.['github'];
+            const clientId =
+                githubConfig && typeof githubConfig['client_id'] === 'string'
+                    ? githubConfig['client_id']
+                    : '';
+            const state = typeof body['state'] === 'string' ? body['state'] : '';
+
+            if (!clientId) return false;
+
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(this.oauthModeStorageKey, mode);
+            }
+
+            const authorizeUrl =
+                `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(clientId)}` +
+                `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+                (state ? `&state=${encodeURIComponent(state)}` : '') +
+                '&scope=read:user%20user:email';
+
+            if (typeof window !== 'undefined' && window.location) {
+                window.location.href = authorizeUrl;
+                return true;
+            }
+        } catch {
+            // Fall back if provider options are unavailable
+        }
+        return false;
+    }
+
+    async handleOAuthCallback(search: string): Promise<void> {
+        const params = new URLSearchParams(search);
+        const code = params.get('code');
+        const state = params.get('state') || undefined;
+        if (!code) return;
+
+        if (typeof window !== 'undefined' && window.history?.replaceState) {
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+
+        const mode =
+            typeof localStorage !== 'undefined'
+                ? localStorage.getItem(this.oauthModeStorageKey) || 'login'
+                : 'login';
+        if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(this.oauthModeStorageKey);
+        }
+
+        const redirectUri = this.getRedirectUri();
+
+        if (mode === 'link' && this.sessionToken) {
+            this.showSecuritySettings = true;
+            this.securityError = '';
+            this.securityMessage = '';
+
+            try {
+                const res = await fetch(this.oauthLinkUrl, {
+                    method: 'POST',
+                    headers: this.getRequestHeaders({
+                        ['Content-Type']: 'application/json',
+                        ['Authorization']: `Bearer ${this.sessionToken}`
+                    }),
+                    body: JSON.stringify({
+                        provider: 'github',
+                        code,
+                        state,
+                        ['redirect_uri']: redirectUri
+                    })
+                });
+
+                this.captureBookmark(res);
+                const body = (await res.json()) as Record<string, unknown>;
+                if (res.ok) {
+                    this.oauthAccounts = this.mapOAuthAccounts(body['oauth_accounts']);
+                    this.securityMessage = 'Linked github account.';
+                } else {
+                    this.securityError =
+                        typeof body['error'] === 'string'
+                            ? body['error']
+                            : 'Failed to link GitHub account.';
+                }
+            } catch {
+                this.securityError = 'Network error while completing GitHub account link.';
+            } finally {
+                this.cdr.detectChanges();
+            }
+            return;
+        }
+
+        this.authenticating = true;
+        this.authError = '';
+        this.pendingApprovalMessage = '';
+
+        try {
+            const res = await fetch(this.oauthLoginUrl, {
+                method: 'POST',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json'
+                }),
+                body: JSON.stringify({
+                    provider: 'github',
+                    code,
+                    state,
+                    ['redirect_uri']: redirectUri
+                })
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+
+            if (res.status === 202 || body['pending_approval'] === true || body['status'] === 'pending') {
+                this.pendingApprovalMessage =
+                    typeof body['message'] === 'string' && body['message']
+                        ? body['message']
+                        : typeof body['error'] === 'string' && body['error']
+                          ? body['error']
+                          : 'Your GitHub account has been registered and is awaiting admin approval before you can sign in.';
+            } else if (res.ok && typeof body['token'] === 'string') {
+                const resolvedUser =
+                    typeof body['username'] === 'string' && body['username']
+                        ? body['username']
+                        : 'GitHubUser';
+                this.saveSession(body['token'], resolvedUser, Boolean(body['is_admin']));
+            } else {
+                this.authError =
+                    typeof body['error'] === 'string' && body['error']
+                        ? body['error']
+                        : 'Failed to complete GitHub sign-in.';
+            }
+        } catch {
+            this.authError = 'Network error while completing GitHub sign-in.';
+        } finally {
+            this.authenticating = false;
+            this.cdr.detectChanges();
+        }
+    }
+
+    async onOAuthLogin(provider: string): Promise<void> {
+        const cleanProvider = provider.toLowerCase().trim();
+        const enteredIdentity = this.loginUsername.trim();
+
+        if (cleanProvider === 'github' && !enteredIdentity) {
+            const redirected = await this.tryStartGitHubRedirect('login');
+            if (redirected) return;
+        }
+
+        const promptedIdentity =
+            !enteredIdentity && typeof prompt === 'function'
+                ? prompt(`Enter your ${cleanProvider} username or email:`) || ''
+                : '';
+        const identity = (enteredIdentity || promptedIdentity).trim();
+
+        if (!identity) {
+            this.authError = `Enter your username/email first or provide it when signing in with ${cleanProvider}.`;
+            this.cdr.detectChanges();
+            return;
+        }
+
+        this.authenticating = true;
+        this.authError = '';
+        this.pendingApprovalMessage = '';
+
+        const payload: Record<string, string> = {
+            provider: cleanProvider,
+            ['provider_user_id']: identity,
+            username: identity,
+            ['display_name']: identity
+        };
+        if (this.totpCode.trim()) {
+            payload['totp_code'] = this.totpCode.trim();
+        }
+
+        try {
+            const res = await fetch(this.oauthLoginUrl, {
+                method: 'POST',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json'
+                }),
+                body: JSON.stringify(payload)
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+
+            if (res.status === 202 || body['pending_approval'] === true || body['status'] === 'pending') {
+                this.pendingApprovalMessage =
+                    typeof body['message'] === 'string' && body['message']
+                        ? body['message']
+                        : typeof body['error'] === 'string' && body['error']
+                          ? body['error']
+                          : 'Your OAuth account has been registered and is awaiting admin approval before you can sign in.';
+            } else if (res.ok && typeof body['token'] === 'string') {
+                const resolvedUser =
+                    typeof body['username'] === 'string' && body['username']
+                        ? body['username']
+                        : identity;
+                this.saveSession(body['token'], resolvedUser, Boolean(body['is_admin']));
+            } else {
+                this.authError =
+                    typeof body['error'] === 'string' && body['error']
+                        ? body['error']
+                        : `Failed to sign in with ${cleanProvider}.`;
+            }
+        } catch {
+            this.authError = `Network error while signing in with ${cleanProvider}.`;
         } finally {
             this.authenticating = false;
             this.cdr.detectChanges();
@@ -375,7 +733,6 @@ export class TrackerComponent implements OnInit, OnDestroy {
             });
 
             this.captureBookmark(verifyRes);
-            this.captureBookmark(verifyRes);
             const verifyBody = (await verifyRes.json()) as Record<string, unknown>;
 
             if (verifyRes.ok && typeof verifyBody['token'] === 'string') {
@@ -383,7 +740,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
                     typeof verifyBody['username'] === 'string' && verifyBody['username']
                         ? verifyBody['username']
                         : trimmedUser;
-                this.saveSession(verifyBody['token'], resolvedUser);
+                this.saveSession(verifyBody['token'], resolvedUser, Boolean(verifyBody['is_admin']));
             } else {
                 this.authError =
                     typeof verifyBody['error'] === 'string'
@@ -436,8 +793,382 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 }));
             this.totpEnabled = Boolean(body['totp_enabled']);
             this.webauthnEnabled = Boolean(body['webauthn_enabled']) || this.passkeys.length > 0;
+            this.oauthAccounts = this.mapOAuthAccounts(body['oauth_accounts']);
+            if (typeof body['is_admin'] === 'boolean') {
+                this.isAdmin = body['is_admin'];
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem(this.adminStorageKey, this.isAdmin ? 'true' : 'false');
+                }
+            }
         } catch {
             // Non-blocking status check
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    isOAuthProviderLinked(provider: string): boolean {
+        const clean = provider.toLowerCase();
+        return this.oauthAccounts.some(a => a.provider === clean);
+    }
+
+    async linkOAuthProvider(provider: string): Promise<void> {
+        const currentToken = this.sessionToken;
+        const cleanProvider = provider.toLowerCase().trim();
+        if (!currentToken || !cleanProvider) return;
+
+        if (cleanProvider === 'github') {
+            const redirected = await this.tryStartGitHubRedirect('link');
+            if (redirected) return;
+        }
+
+        const prompted =
+            typeof prompt === 'function'
+                ? prompt(
+                      `Enter your ${cleanProvider} account username or email to link:`,
+                      this.loggedInUser
+                  )
+                : this.loggedInUser;
+        const identity = (prompted || '').trim();
+        if (!identity) return;
+
+        this.securityError = '';
+        this.securityMessage = '';
+
+        try {
+            const res = await fetch(this.oauthLinkUrl, {
+                method: 'POST',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json',
+                    ['Authorization']: `Bearer ${currentToken}`
+                }),
+                body: JSON.stringify({
+                    provider: cleanProvider,
+                    ['provider_user_id']: identity,
+                    ['display_name']: identity
+                })
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== currentToken) return;
+
+            if (res.ok) {
+                this.oauthAccounts = this.mapOAuthAccounts(body['oauth_accounts']);
+                this.securityMessage = `Linked ${cleanProvider} account.`;
+            } else {
+                this.securityError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : `Failed to link ${cleanProvider} account.`;
+            }
+        } catch {
+            this.securityError = `Network error while linking ${cleanProvider} account.`;
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async unlinkOAuthProvider(provider: string): Promise<void> {
+        const currentToken = this.sessionToken;
+        const cleanProvider = provider.toLowerCase().trim();
+        if (!currentToken || !cleanProvider) return;
+
+        this.securityError = '';
+        this.securityMessage = '';
+
+        try {
+            const res = await fetch(
+                `${this.oauthLinkUrl}?provider=${encodeURIComponent(cleanProvider)}`,
+                {
+                    method: 'DELETE',
+                    headers: this.getRequestHeaders({
+                        ['Authorization']: `Bearer ${currentToken}`
+                    })
+                }
+            );
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== currentToken) return;
+
+            if (res.ok) {
+                this.oauthAccounts = this.mapOAuthAccounts(body['oauth_accounts']);
+                this.securityMessage = `Unlinked ${cleanProvider} account.`;
+            } else {
+                this.securityError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : `Failed to unlink ${cleanProvider} account.`;
+            }
+        } catch {
+            this.securityError = `Network error while unlinking ${cleanProvider} account.`;
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    toggleAdminPanel(): void {
+        this.showAdminPanel = !this.showAdminPanel;
+        if (this.showAdminPanel) {
+            void this.loadAdminUsers();
+        }
+    }
+
+    async loadAdminUsers(): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken) return;
+        this.adminError = '';
+
+        try {
+            const res = await fetch(this.adminUsersUrl, {
+                headers: this.getRequestHeaders({
+                    ['Authorization']: `Bearer ${currentToken}`
+                })
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== currentToken) return;
+
+            if (!res.ok) {
+                this.adminError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : 'Failed to load user accounts.';
+                return;
+            }
+
+            const rawUsers = Array.isArray(body['users'])
+                ? (body['users'] as Record<string, unknown>[])
+                : [];
+            this.adminUsers = rawUsers
+                .filter(u => typeof u['username'] === 'string')
+                .map((u, idx) => ({
+                    id: typeof u['id'] === 'number' ? u['id'] : idx + 1,
+                    username: u['username'] as string,
+                    email: typeof u['email'] === 'string' ? u['email'] : '',
+                    role: typeof u['role'] === 'string' ? u['role'] : 'user',
+                    status: typeof u['status'] === 'string' ? u['status'] : 'approved',
+                    totpEnabled: Boolean(u['totp_enabled']),
+                    oauthAccounts: this.mapOAuthAccounts(u['oauth_accounts']),
+                    createdAt: typeof u['created_at'] === 'string' ? u['created_at'] : ''
+                }));
+            this.pendingUserCount =
+                typeof body['pending_count'] === 'number'
+                    ? body['pending_count']
+                    : this.adminUsers.filter(u => u.status === 'pending').length;
+        } catch {
+            this.adminError = 'Network error while loading users.';
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async updateUserStatus(username: string, status: string, role?: string): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken || !username) return;
+        this.adminError = '';
+        this.adminMessage = '';
+
+        const payload: Record<string, string> = { status };
+        if (role) {
+            payload['role'] = role;
+        }
+
+        try {
+            const res = await fetch(`${this.adminUsersUrl}/${encodeURIComponent(username)}`, {
+                method: 'PATCH',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json',
+                    ['Authorization']: `Bearer ${currentToken}`
+                }),
+                body: JSON.stringify(payload)
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== currentToken) return;
+
+            if (res.ok) {
+                const target = this.adminUsers.find(u => u.username === username);
+                if (target) {
+                    target.status =
+                        typeof body['status'] === 'string' ? body['status'] : status;
+                    if (role || typeof body['role'] === 'string') {
+                        target.role =
+                            typeof body['role'] === 'string' ? body['role'] : role || target.role;
+                    }
+                }
+                this.pendingUserCount = this.adminUsers.filter(u => u.status === 'pending').length;
+                this.adminMessage = `User ${username} updated to ${status}.`;
+            } else {
+                this.adminError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : `Failed to update ${username}.`;
+            }
+        } catch {
+            this.adminError = `Network error while updating ${username}.`;
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async updateOwnUsername(): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken) return;
+
+        const candidate = this.newUsernameInput.trim();
+        if (!candidate) {
+            this.securityError = 'Enter a new username first.';
+            this.cdr.detectChanges();
+            return;
+        }
+        if (candidate === this.loggedInUser) {
+            this.securityMessage = 'Username is already set to that value.';
+            this.cdr.detectChanges();
+            return;
+        }
+
+        this.securityError = '';
+        this.securityMessage = '';
+
+        try {
+            const res = await fetch(this.updateUsernameUrl, {
+                method: 'PATCH',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json',
+                    ['Authorization']: `Bearer ${currentToken}`
+                }),
+                body: JSON.stringify({
+                    ['new_username']: candidate
+                })
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== currentToken) return;
+
+            if (res.ok) {
+                const previousUsername = this.loggedInUser;
+                const updatedUsername =
+                    typeof body['username'] === 'string' && body['username']
+                        ? body['username']
+                        : candidate;
+                this.loggedInUser = updatedUsername;
+                this.newUsernameInput = '';
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem(this.userStorageKey, this.loggedInUser);
+                }
+                this.visits = this.visits.map(v =>
+                    v.username.toLowerCase() === previousUsername.toLowerCase()
+                        ? { ...v, username: updatedUsername }
+                        : v
+                );
+                this.securityMessage = `Username updated to ${updatedUsername}.`;
+            } else {
+                this.securityError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : 'Failed to update username.';
+            }
+        } catch {
+            this.securityError = 'Network error while updating username.';
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async renameAdminUser(username: string): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken || !username) return;
+
+        const prompted =
+            typeof prompt === 'function'
+                ? prompt(`Enter a new username for ${username}:`, username)
+                : null;
+        const newUsername = (prompted || '').trim();
+        if (!newUsername || newUsername === username) return;
+
+        this.adminError = '';
+        this.adminMessage = '';
+
+        try {
+            const res = await fetch(`${this.adminUsersUrl}/${encodeURIComponent(username)}`, {
+                method: 'PATCH',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json',
+                    ['Authorization']: `Bearer ${currentToken}`
+                }),
+                body: JSON.stringify({
+                    ['new_username']: newUsername
+                })
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== currentToken) return;
+
+            if (res.ok) {
+                const resolvedUsername =
+                    typeof body['username'] === 'string' && body['username']
+                        ? body['username']
+                        : newUsername;
+                const target = this.adminUsers.find(u => u.username === username);
+                if (target) {
+                    target.username = resolvedUsername;
+                }
+                if (this.loggedInUser.toLowerCase() === username.toLowerCase()) {
+                    this.loggedInUser = resolvedUsername;
+                    if (typeof localStorage !== 'undefined') {
+                        localStorage.setItem(this.userStorageKey, this.loggedInUser);
+                    }
+                }
+                this.adminMessage = `Renamed ${username} to ${resolvedUsername}.`;
+            } else {
+                this.adminError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : `Failed to rename ${username}.`;
+            }
+        } catch {
+            this.adminError = `Network error while renaming ${username}.`;
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async deleteAdminUser(username: string): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken || !username) return;
+        this.adminError = '';
+        this.adminMessage = '';
+
+        try {
+            const res = await fetch(`${this.adminUsersUrl}/${encodeURIComponent(username)}`, {
+                method: 'DELETE',
+                headers: this.getRequestHeaders({
+                    ['Authorization']: `Bearer ${currentToken}`
+                })
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== currentToken) return;
+
+            if (res.ok) {
+                this.adminUsers = this.adminUsers.filter(u => u.username !== username);
+                this.pendingUserCount = this.adminUsers.filter(u => u.status === 'pending').length;
+                this.adminMessage = `User ${username} deleted.`;
+            } else {
+                this.adminError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : `Failed to delete ${username}.`;
+            }
+        } catch {
+            this.adminError = `Network error while deleting ${username}.`;
         } finally {
             this.cdr.detectChanges();
         }
