@@ -429,6 +429,17 @@ describe('TrackerComponent', () => {
             status: 200,
             headers: { get: jest.fn().mockReturnValue(null) },
             json: jest.fn().mockResolvedValue({
+                state: 'csrf-state-0',
+                providers: {
+                    github: { enabled: true, ['client_id']: null }
+                }
+            })
+        });
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
                 success: true,
                 token: 'oauth-token-123',
                 username: 'CharlieM312',
