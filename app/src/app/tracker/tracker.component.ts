@@ -431,7 +431,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
     private async tryStartOAuthRedirect(
         provider: 'github' | 'google' | 'microsoft',
         mode: 'login' | 'link'
-    ): Promise<boolean> {
+    ): Promise<{ redirected: boolean; error?: string }> {
         const redirectUri = this.getRedirectUri();
         try {
             const res = await fetch(
@@ -440,7 +440,12 @@ export class TrackerComponent implements OnInit, OnDestroy {
                     headers: this.getRequestHeaders()
                 }
             );
-            if (!res.ok) return false;
+            if (!res.ok) {
+                return {
+                    redirected: false,
+                    error: `Could not contact OAuth service (/api/oauth/providers returned ${res.status}).`
+                };
+            }
             this.captureBookmark(res);
 
             const body = (await res.json()) as Record<string, unknown>;
@@ -452,7 +457,13 @@ export class TrackerComponent implements OnInit, OnDestroy {
                     : '';
             const state = typeof body['state'] === 'string' ? body['state'] : '';
 
-            if (!clientId) return false;
+            if (!clientId) {
+                const providerLabel = provider.charAt(0).toUpperCase() + provider.slice(1);
+                return {
+                    redirected: false,
+                    error: `${providerLabel} sign-in is not configured on the server (${provider.toUpperCase()}_CLIENT_ID is missing).`
+                };
+            }
 
             if (typeof localStorage !== 'undefined') {
                 localStorage.setItem(this.oauthModeStorageKey, mode);
@@ -481,12 +492,15 @@ export class TrackerComponent implements OnInit, OnDestroy {
 
             if (typeof window !== 'undefined' && window.location) {
                 window.location.href = authorizeUrl;
-                return true;
+                return { redirected: true };
             }
         } catch {
-            // Fall back if provider options are unavailable
+            return {
+                redirected: false,
+                error: 'Network error while initiating OAuth redirect.'
+            };
         }
-        return false;
+        return { redirected: false };
     }
 
     async handleOAuthCallback(search: string): Promise<void> {
@@ -612,8 +626,13 @@ export class TrackerComponent implements OnInit, OnDestroy {
             cleanProvider === 'google' ||
             cleanProvider === 'microsoft'
         ) {
-            const redirected = await this.tryStartOAuthRedirect(cleanProvider, 'login');
-            if (redirected) return;
+            const redirectResult = await this.tryStartOAuthRedirect(cleanProvider, 'login');
+            if (redirectResult.redirected) return;
+            if (redirectResult.error && !enteredIdentity && cleanProvider !== 'github') {
+                this.authError = redirectResult.error;
+                this.cdr.detectChanges();
+                return;
+            }
         }
 
         const promptedIdentity =
@@ -856,8 +875,15 @@ export class TrackerComponent implements OnInit, OnDestroy {
             cleanProvider === 'google' ||
             cleanProvider === 'microsoft'
         ) {
-            const redirected = await this.tryStartOAuthRedirect(cleanProvider, 'link');
-            if (redirected) return;
+            const redirectResult = await this.tryStartOAuthRedirect(cleanProvider, 'link');
+            if (redirectResult.redirected) return;
+            if (cleanProvider === 'microsoft' || cleanProvider === 'google') {
+                this.securityError =
+                    redirectResult.error ||
+                    `${cleanProvider.charAt(0).toUpperCase() + cleanProvider.slice(1)} OAuth is not configured on the server.`;
+                this.cdr.detectChanges();
+                return;
+            }
         }
 
         const prompted =
