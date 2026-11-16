@@ -507,6 +507,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
             this.showSecuritySettings = true;
             this.securityError = '';
             this.securityMessage = '';
+            void this.loadTwoFaStatus();
 
             try {
                 const res = await fetch(this.oauthLinkUrl, {
