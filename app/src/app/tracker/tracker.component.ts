@@ -595,7 +595,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
         const cleanProvider = provider.toLowerCase().trim();
         const enteredIdentity = this.loginUsername.trim();
 
-        if ((cleanProvider === 'github' || cleanProvider === 'microsoft') && !enteredIdentity) {
+        if (cleanProvider === 'github' || cleanProvider === 'microsoft') {
             const redirected = await this.tryStartOAuthRedirect(cleanProvider, 'login');
             if (redirected) return;
         }
