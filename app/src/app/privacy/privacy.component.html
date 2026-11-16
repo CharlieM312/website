@@ -1,0 +1,52 @@
+<div class="privacy-policy">
+    <h2>Privacy Policy &amp; Terms of Use</h2>
+    <p class="last-updated">Last updated: November 2026</p>
+
+    <section class="policy-card">
+        <h3>1. Overview</h3>
+        <p>
+            This Privacy Policy explains how <strong>charlie-meader.com</strong> ("Charlie Meader Airport Website &amp; Tracker")
+            collects, uses, and protects information when you browse the website, sign in, or log airport visits.
+        </p>
+    </section>
+
+    <section class="policy-card">
+        <h3>2. Information We Collect</h3>
+        <ul>
+            <li>
+                <strong>Account &amp; OAuth Identity:</strong> When you sign in or link an account using GitHub, Google, or Microsoft OAuth,
+                we receive your basic profile identifier (unique provider ID, display name/username, and email address) solely to identify your account.
+            </li>
+            <li>
+                <strong>Two-Factor Authentication &amp; Passkeys:</strong> If you enable 2FA or register a YubiKey/Passkey (WebAuthn),
+                we store the TOTP shared secret or the public key and credential ID required to verify your sign-in.
+            </li>
+            <li>
+                <strong>Airport Visits &amp; Flight Data:</strong> When you log a visit on <code>/tracker</code>, we store the airport IATA codes,
+                visit date, optional flight number, and optional notes associated with your username.
+            </li>
+            <li>
+                <strong>Cookies &amp; Local Storage:</strong> We use a functional cookie (<code>darkMode</code>) to remember your theme preference
+                and browser <code>localStorage</code> to store your active session token when signed in. We do not use advertising or third-party tracking cookies.
+            </li>
+        </ul>
+    </section>
+
+    <section class="policy-card">
+        <h3>3. How We Use Your Information</h3>
+        <ul>
+            <li>To authenticate your account and enforce administrator approval for write access.</li>
+            <li>To display logged airport visits, routes, and aggregated travel statistics on the website.</li>
+            <li>We <strong>never</strong> sell, rent, or share your personal data or OAuth profile details with advertisers or third parties.</li>
+        </ul>
+    </section>
+
+    <section class="policy-card">
+        <h3>4. Data Storage &amp; Your Controls</h3>
+        <p>
+            Account and visit data are stored securely in Cloudflare D1. Signed-in users can rename their username, unlink OAuth providers,
+            remove registered passkeys, disable 2FA, or edit and delete their logged airport visits at any time from the
+            <a routerLink="/tracker">Tracker</a> page.
+        </p>
+    </section>
+</div>
