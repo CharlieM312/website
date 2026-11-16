@@ -110,6 +110,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
     private readonly userStorageKey = 'tracker_username';
     private readonly adminStorageKey = 'tracker_is_admin';
     private readonly oauthModeStorageKey = 'tracker_oauth_mode';
+    private readonly oauthProviderStorageKey = 'tracker_oauth_provider';
     private subscriber = new Subscription();
 
     readonly oauthProviders = ['github', 'google', 'microsoft'];
@@ -423,11 +424,14 @@ export class TrackerComponent implements OnInit, OnDestroy {
         return 'https://charlie-meader.com/tracker';
     }
 
-    private async tryStartGitHubRedirect(mode: 'login' | 'link'): Promise<boolean> {
+    private async tryStartOAuthRedirect(
+        provider: 'github' | 'microsoft',
+        mode: 'login' | 'link'
+    ): Promise<boolean> {
         const redirectUri = this.getRedirectUri();
         try {
             const res = await fetch(
-                `${this.oauthProvidersUrl}?provider=github&redirect_uri=${encodeURIComponent(redirectUri)}`,
+                `${this.oauthProvidersUrl}?provider=${encodeURIComponent(provider)}&redirect_uri=${encodeURIComponent(redirectUri)}`,
                 {
                     headers: this.getRequestHeaders()
                 }
@@ -437,10 +441,10 @@ export class TrackerComponent implements OnInit, OnDestroy {
 
             const body = (await res.json()) as Record<string, unknown>;
             const providers = body['providers'] as Record<string, Record<string, unknown>> | undefined;
-            const githubConfig = providers?.['github'];
+            const providerConfig = providers?.[provider];
             const clientId =
-                githubConfig && typeof githubConfig['client_id'] === 'string'
-                    ? githubConfig['client_id']
+                providerConfig && typeof providerConfig['client_id'] === 'string'
+                    ? providerConfig['client_id']
                     : '';
             const state = typeof body['state'] === 'string' ? body['state'] : '';
 
@@ -448,13 +452,21 @@ export class TrackerComponent implements OnInit, OnDestroy {
 
             if (typeof localStorage !== 'undefined') {
                 localStorage.setItem(this.oauthModeStorageKey, mode);
+                localStorage.setItem(this.oauthProviderStorageKey, provider);
             }
 
             const authorizeUrl =
-                `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(clientId)}` +
-                `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-                (state ? `&state=${encodeURIComponent(state)}` : '') +
-                '&scope=read:user%20user:email';
+                provider === 'microsoft'
+                    ? `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${encodeURIComponent(clientId)}` +
+                      '&response_type=code' +
+                      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+                      '&response_mode=query' +
+                      `&scope=${encodeURIComponent('openid profile email User.Read')}` +
+                      (state ? `&state=${encodeURIComponent(state)}` : '')
+                    : `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(clientId)}` +
+                      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+                      (state ? `&state=${encodeURIComponent(state)}` : '') +
+                      '&scope=read:user%20user:email';
 
             if (typeof window !== 'undefined' && window.location) {
                 window.location.href = authorizeUrl;
@@ -480,8 +492,13 @@ export class TrackerComponent implements OnInit, OnDestroy {
             typeof localStorage !== 'undefined'
                 ? localStorage.getItem(this.oauthModeStorageKey) || 'login'
                 : 'login';
+        const provider =
+            typeof localStorage !== 'undefined'
+                ? localStorage.getItem(this.oauthProviderStorageKey) || 'github'
+                : 'github';
         if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(this.oauthModeStorageKey);
+            localStorage.removeItem(this.oauthProviderStorageKey);
         }
 
         const redirectUri = this.getRedirectUri();
@@ -499,7 +516,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
                         ['Authorization']: `Bearer ${this.sessionToken}`
                     }),
                     body: JSON.stringify({
-                        provider: 'github',
+                        provider,
                         code,
                         state,
                         ['redirect_uri']: redirectUri
@@ -510,15 +527,15 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 const body = (await res.json()) as Record<string, unknown>;
                 if (res.ok) {
                     this.oauthAccounts = this.mapOAuthAccounts(body['oauth_accounts']);
-                    this.securityMessage = 'Linked github account.';
+                    this.securityMessage = `Linked ${provider} account.`;
                 } else {
                     this.securityError =
                         typeof body['error'] === 'string'
                             ? body['error']
-                            : 'Failed to link GitHub account.';
+                            : `Failed to link ${provider} account.`;
                 }
             } catch {
-                this.securityError = 'Network error while completing GitHub account link.';
+                this.securityError = `Network error while completing ${provider} account link.`;
             } finally {
                 this.cdr.detectChanges();
             }
@@ -536,7 +553,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
                     ['Content-Type']: 'application/json'
                 }),
                 body: JSON.stringify({
-                    provider: 'github',
+                    provider,
                     code,
                     state,
                     ['redirect_uri']: redirectUri
@@ -552,21 +569,21 @@ export class TrackerComponent implements OnInit, OnDestroy {
                         ? body['message']
                         : typeof body['error'] === 'string' && body['error']
                           ? body['error']
-                          : 'Your GitHub account has been registered and is awaiting admin approval before you can sign in.';
+                          : `Your ${provider} account has been registered and is awaiting admin approval before you can sign in.`;
             } else if (res.ok && typeof body['token'] === 'string') {
                 const resolvedUser =
                     typeof body['username'] === 'string' && body['username']
                         ? body['username']
-                        : 'GitHubUser';
+                        : 'OAuthUser';
                 this.saveSession(body['token'], resolvedUser, Boolean(body['is_admin']));
             } else {
                 this.authError =
                     typeof body['error'] === 'string' && body['error']
                         ? body['error']
-                        : 'Failed to complete GitHub sign-in.';
+                        : `Failed to complete ${provider} sign-in.`;
             }
         } catch {
-            this.authError = 'Network error while completing GitHub sign-in.';
+            this.authError = `Network error while completing ${provider} sign-in.`;
         } finally {
             this.authenticating = false;
             this.cdr.detectChanges();
@@ -577,8 +594,8 @@ export class TrackerComponent implements OnInit, OnDestroy {
         const cleanProvider = provider.toLowerCase().trim();
         const enteredIdentity = this.loginUsername.trim();
 
-        if (cleanProvider === 'github' && !enteredIdentity) {
-            const redirected = await this.tryStartGitHubRedirect('login');
+        if ((cleanProvider === 'github' || cleanProvider === 'microsoft') && !enteredIdentity) {
+            const redirected = await this.tryStartOAuthRedirect(cleanProvider, 'login');
             if (redirected) return;
         }
 
@@ -817,8 +834,8 @@ export class TrackerComponent implements OnInit, OnDestroy {
         const cleanProvider = provider.toLowerCase().trim();
         if (!currentToken || !cleanProvider) return;
 
-        if (cleanProvider === 'github') {
-            const redirected = await this.tryStartGitHubRedirect('link');
+        if (cleanProvider === 'github' || cleanProvider === 'microsoft') {
+            const redirected = await this.tryStartOAuthRedirect(cleanProvider, 'link');
             if (redirected) return;
         }
 

@@ -517,6 +517,24 @@ describe('TrackerComponent', () => {
 
         await component.handleOAuthCallback('?code=gh-auth-code&state=csrf-state-1');
         expect(component.sessionToken).toBe('github-callback-token');
+
+        component.sessionToken = '';
+        localStorage.setItem('tracker_oauth_provider', 'microsoft');
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                token: 'microsoft-callback-token',
+                username: 'CharlieM312',
+                ['is_admin']: true,
+                status: 'approved'
+            })
+        });
+
+        await component.handleOAuthCallback('?code=ms-auth-code&state=csrf-state-2');
+        expect(component.sessionToken).toBe('microsoft-callback-token');
     });
 
     it('should load, approve/reject, and delete users via /api/admin/users when admin', async () => {
