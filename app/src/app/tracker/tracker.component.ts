@@ -200,8 +200,12 @@ export class TrackerComponent implements OnInit, OnDestroy {
             })
         );
 
-        if (typeof window !== 'undefined' && window.location?.search?.includes('code=')) {
-            void this.handleOAuthCallback(window.location.search);
+        if (typeof window !== 'undefined') {
+            if (window.location?.search?.includes('code=')) {
+                void this.handleOAuthCallback(window.location.search);
+            } else if (window.location?.hash?.includes('id_token=')) {
+                void this.handleOAuthCallback(window.location.hash.replace(/^#/, '?'));
+            }
         }
 
         void this.loadVisits();
@@ -425,7 +429,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
     }
 
     private async tryStartOAuthRedirect(
-        provider: 'github' | 'microsoft',
+        provider: 'github' | 'google' | 'microsoft',
         mode: 'login' | 'link'
     ): Promise<boolean> {
         const redirectUri = this.getRedirectUri();
@@ -456,17 +460,24 @@ export class TrackerComponent implements OnInit, OnDestroy {
             }
 
             const authorizeUrl =
-                provider === 'microsoft'
-                    ? `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${encodeURIComponent(clientId)}` +
-                      '&response_type=code' +
+                provider === 'google'
+                    ? `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}` +
                       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-                      '&response_mode=query' +
-                      `&scope=${encodeURIComponent('openid profile email User.Read')}` +
+                      '&response_type=id_token' +
+                      `&scope=${encodeURIComponent('openid email profile')}` +
+                      `&nonce=${encodeURIComponent(state || 'google-nonce')}` +
                       (state ? `&state=${encodeURIComponent(state)}` : '')
-                    : `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(clientId)}` +
-                      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-                      (state ? `&state=${encodeURIComponent(state)}` : '') +
-                      '&scope=read:user%20user:email';
+                    : provider === 'microsoft'
+                      ? `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${encodeURIComponent(clientId)}` +
+                        '&response_type=code' +
+                        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+                        '&response_mode=query' +
+                        `&scope=${encodeURIComponent('openid profile email User.Read')}` +
+                        (state ? `&state=${encodeURIComponent(state)}` : '')
+                      : `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(clientId)}` +
+                        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+                        (state ? `&state=${encodeURIComponent(state)}` : '') +
+                        '&scope=read:user%20user:email';
 
             if (typeof window !== 'undefined' && window.location) {
                 window.location.href = authorizeUrl;
@@ -479,10 +490,11 @@ export class TrackerComponent implements OnInit, OnDestroy {
     }
 
     async handleOAuthCallback(search: string): Promise<void> {
-        const params = new URLSearchParams(search);
-        const code = params.get('code');
+        const params = new URLSearchParams(search.replace(/^#/, '?'));
+        const code = params.get('code') || undefined;
+        const idToken = params.get('id_token') || undefined;
         const state = params.get('state') || undefined;
-        if (!code) return;
+        if (!code && !idToken) return;
 
         if (typeof window !== 'undefined' && window.history?.replaceState) {
             window.history.replaceState({}, '', window.location.pathname);
@@ -494,14 +506,24 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 : 'login';
         const provider =
             typeof localStorage !== 'undefined'
-                ? localStorage.getItem(this.oauthProviderStorageKey) || 'github'
-                : 'github';
+                ? localStorage.getItem(this.oauthProviderStorageKey) ||
+                  (idToken ? 'google' : 'github')
+                : idToken
+                  ? 'google'
+                  : 'github';
         if (typeof localStorage !== 'undefined') {
             localStorage.removeItem(this.oauthModeStorageKey);
             localStorage.removeItem(this.oauthProviderStorageKey);
         }
 
         const redirectUri = this.getRedirectUri();
+        const callbackPayload: Record<string, string | undefined> = {
+            provider,
+            code,
+            ['id_token']: idToken,
+            state,
+            ['redirect_uri']: redirectUri
+        };
 
         if (mode === 'link' && this.sessionToken) {
             this.showSecuritySettings = true;
@@ -516,12 +538,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
                         ['Content-Type']: 'application/json',
                         ['Authorization']: `Bearer ${this.sessionToken}`
                     }),
-                    body: JSON.stringify({
-                        provider,
-                        code,
-                        state,
-                        ['redirect_uri']: redirectUri
-                    })
+                    body: JSON.stringify(callbackPayload)
                 });
 
                 this.captureBookmark(res);
@@ -553,12 +570,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
                 headers: this.getRequestHeaders({
                     ['Content-Type']: 'application/json'
                 }),
-                body: JSON.stringify({
-                    provider,
-                    code,
-                    state,
-                    ['redirect_uri']: redirectUri
-                })
+                body: JSON.stringify(callbackPayload)
             });
 
             this.captureBookmark(res);
@@ -595,7 +607,11 @@ export class TrackerComponent implements OnInit, OnDestroy {
         const cleanProvider = provider.toLowerCase().trim();
         const enteredIdentity = this.loginUsername.trim();
 
-        if (cleanProvider === 'github' || cleanProvider === 'microsoft') {
+        if (
+            cleanProvider === 'github' ||
+            cleanProvider === 'google' ||
+            cleanProvider === 'microsoft'
+        ) {
             const redirected = await this.tryStartOAuthRedirect(cleanProvider, 'login');
             if (redirected) return;
         }
@@ -835,7 +851,11 @@ export class TrackerComponent implements OnInit, OnDestroy {
         const cleanProvider = provider.toLowerCase().trim();
         if (!currentToken || !cleanProvider) return;
 
-        if (cleanProvider === 'github' || cleanProvider === 'microsoft') {
+        if (
+            cleanProvider === 'github' ||
+            cleanProvider === 'google' ||
+            cleanProvider === 'microsoft'
+        ) {
             const redirected = await this.tryStartOAuthRedirect(cleanProvider, 'link');
             if (redirected) return;
         }
