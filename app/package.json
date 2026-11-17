@@ -19,7 +19,7 @@
     "@angular/platform-browser": "22.2.6",
     "@angular/router": "22.2.6",
     "leaflet": "^1.9.4",
-    "ngx-cookie-service": "^22.0.0",
+    "ngx-cookie-service": "^22.2.0",
     "rxjs": "^7.8.2",
     "tslib": "^2.9.1",
     "zone.js": "^0.16.3"
