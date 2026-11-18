@@ -672,6 +672,234 @@ describe('TrackerComponent', () => {
         expect(localStorage.getItem('tracker_username')).toBe('CharlieM');
     });
 
+    it('should update password via PATCH /api/user/password and optionally revoke other sessions', async () => {
+        component.sessionToken = 'uuid-session-token';
+        component.hasPassword = true;
+        component.currentPasswordInput = 'old-password-123';
+        component.newPasswordInput = 'new-password-456';
+        component.revokeOtherSessionsOnPasswordChange = true;
+        component.sessions = [
+            {
+                id: 1,
+                userAgent: 'Current Browser',
+                ipAddress: '127.0.0.1',
+                createdAt: '2026-11-18',
+                lastUsedAt: '2026-11-18',
+                expiresAt: null,
+                isCurrent: true
+            },
+            {
+                id: 2,
+                userAgent: 'Mobile Safari',
+                ipAddress: '10.0.0.2',
+                createdAt: '2026-11-17',
+                lastUsedAt: '2026-11-17',
+                expiresAt: null,
+                isCurrent: false
+            }
+        ];
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                ['has_password']: true,
+                message: 'Password updated and hashed with PBKDF2-SHA256.'
+            })
+        });
+
+        await component.updatePassword();
+
+        expect(fetchMock).toHaveBeenCalledWith('/api/user/password', {
+            method: 'PATCH',
+            headers: {
+                ['Content-Type']: 'application/json',
+                ['Authorization']: 'Bearer uuid-session-token'
+            },
+            body: JSON.stringify({
+                ['new_password']: 'new-password-456',
+                ['current_password']: 'old-password-123',
+                ['revoke_other_sessions']: true
+            })
+        });
+        expect(component.currentPasswordInput).toBe('');
+        expect(component.newPasswordInput).toBe('');
+        expect(component.revokeOtherSessionsOnPasswordChange).toBe(false);
+        expect(component.sessions).toHaveLength(1);
+        expect(component.securityMessage).toContain('PBKDF2-SHA256');
+    });
+
+    it('should load and revoke active sessions via /api/sessions', async () => {
+        component.sessionToken = 'uuid-session-token';
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                username: 'CharlieM312',
+                sessions: [
+                    {
+                        id: 1,
+                        ['user_agent']: 'Chrome on Windows',
+                        ['ip_address']: '203.0.113.10',
+                        ['created_at']: '2026-11-18 20:00:00',
+                        ['last_used_at']: '2026-11-18 21:00:00',
+                        ['expires_at']: 1797627300000,
+                        ['is_current']: true
+                    },
+                    {
+                        id: 2,
+                        ['user_agent']: 'iPhone Safari',
+                        ['ip_address']: '203.0.113.11',
+                        ['created_at']: '2026-11-17 12:00:00',
+                        ['last_used_at']: '2026-11-18 18:00:00',
+                        ['expires_at']: 1797500000000,
+                        ['is_current']: false
+                    },
+                    {
+                        id: 3,
+                        ['user_agent']: 'iPad Safari',
+                        ['ip_address']: '203.0.113.12',
+                        ['created_at']: '2026-11-16 09:00:00',
+                        ['last_used_at']: '2026-11-16 09:30:00',
+                        ['expires_at']: 1797400000000,
+                        ['is_current']: false
+                    }
+                ]
+            })
+        });
+
+        await component.loadSessions();
+        expect(component.sessions).toHaveLength(3);
+        expect(component.sessions[0].isCurrent).toBe(true);
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                ['revoked_id']: 2
+            })
+        });
+
+        await component.revokeSession(2);
+        expect(fetchMock).toHaveBeenCalledWith('/api/sessions/2', {
+            method: 'DELETE',
+            headers: {
+                ['Authorization']: 'Bearer uuid-session-token'
+            }
+        });
+        expect(component.sessions).toHaveLength(2);
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                revoked: 'all_others'
+            })
+        });
+
+        await component.revokeAllOtherSessions();
+        expect(fetchMock).toHaveBeenCalledWith('/api/sessions?all_others=true', {
+            method: 'DELETE',
+            headers: {
+                ['Authorization']: 'Bearer uuid-session-token'
+            }
+        });
+        expect(component.sessions).toHaveLength(1);
+        expect(component.sessions[0].id).toBe(1);
+    });
+
+    it('should load, create, and revoke Personal Access Tokens via /api/api-keys', async () => {
+        component.sessionToken = 'uuid-session-token';
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                username: 'CharlieM312',
+                ['api_keys']: [
+                    {
+                        id: 1,
+                        label: 'Existing CLI Key',
+                        ['key_prefix']: 'atk_12345678...',
+                        ['created_at']: '2026-11-18 10:00:00',
+                        ['last_used_at']: '2026-11-18 11:00:00',
+                        ['expires_at']: null,
+                        expired: false
+                    }
+                ]
+            })
+        });
+
+        await component.loadApiKeys();
+        expect(component.apiKeys).toHaveLength(1);
+        expect(component.apiKeys[0].label).toBe('Existing CLI Key');
+
+        component.newApiKeyLabel = 'iOS Shortcut';
+        component.newApiKeyExpiresDays = 365;
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 201,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                ['api_key']: 'atk_rawSecretTokenValue1234567890',
+                key: {
+                    id: 2,
+                    label: 'iOS Shortcut',
+                    ['key_prefix']: 'atk_rawSecre...',
+                    ['expires_at']: 1797627300000
+                },
+                message: 'Copy this API key now.'
+            })
+        });
+
+        await component.createApiKey();
+        expect(fetchMock).toHaveBeenCalledWith('/api/api-keys', {
+            method: 'POST',
+            headers: {
+                ['Content-Type']: 'application/json',
+                ['Authorization']: 'Bearer uuid-session-token'
+            },
+            body: JSON.stringify({
+                label: 'iOS Shortcut',
+                ['expires_in_days']: 365
+            })
+        });
+        expect(component.newlyCreatedApiKey).toBe('atk_rawSecretTokenValue1234567890');
+        expect(component.apiKeys).toHaveLength(2);
+        expect(component.apiKeys[0].id).toBe(2);
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                ['revoked_id']: 2
+            })
+        });
+
+        await component.revokeApiKey(2);
+        expect(fetchMock).toHaveBeenCalledWith('/api/api-keys/2', {
+            method: 'DELETE',
+            headers: {
+                ['Authorization']: 'Bearer uuid-session-token'
+            }
+        });
+        expect(component.apiKeys).toHaveLength(1);
+        expect(component.apiKeys[0].id).toBe(1);
+    });
+
     it('should clear session and call POST /api/logout on onLogout', async () => {
         component.sessionToken = 'uuid-session-token';
         component.loggedInUser = 'CharlieM312';

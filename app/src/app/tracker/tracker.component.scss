@@ -121,6 +121,39 @@
         margin-top: 4px;
     }
 
+    .api-key-create-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1.5fr;
+        gap: 8px;
+        margin-top: 4px;
+    }
+
+    .password-actions-row,
+    .section-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-top: 4px;
+
+        h4 {
+            margin: 8px 0;
+        }
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.88rem;
+        white-space: nowrap;
+
+        input[type='checkbox'] {
+            width: auto;
+            margin: 0;
+        }
+    }
+
     .passkey-list {
         display: flex;
         flex-direction: column;

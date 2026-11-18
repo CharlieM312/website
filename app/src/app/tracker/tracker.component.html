@@ -232,6 +232,36 @@
                     </button>
                 </div>
                 <hr>
+                <h4>{{ hasPassword ? 'Change Password' : 'Set Password' }}</h4>
+                <div class="form-row">
+                    @if (hasPassword) {
+                        <input
+                            type="password"
+                            name="currentPasswordInput"
+                            [(ngModel)]="currentPasswordInput"
+                            autocomplete="current-password"
+                            placeholder="Current Password">
+                    }
+                    <input
+                        type="password"
+                        name="newPasswordInput"
+                        [(ngModel)]="newPasswordInput"
+                        autocomplete="new-password"
+                        placeholder="New Password (min 8 chars)">
+                </div>
+                <div class="password-actions-row">
+                    <label class="checkbox-label">
+                        <input
+                            type="checkbox"
+                            name="revokeOtherSessionsOnPasswordChange"
+                            [(ngModel)]="revokeOtherSessionsOnPasswordChange">
+                        Sign out of all other devices
+                    </label>
+                    <button type="button" class="secondary" (click)="updatePassword()">
+                        {{ hasPassword ? 'Change Password' : 'Set Password' }}
+                    </button>
+                </div>
+                <hr>
                 <div class="form-actions">
                     <button type="button" (click)="setupTotp()">
                         {{ totpEnabled ? 'Reset Microsoft Authenticator' : 'Setup Microsoft Authenticator' }}
@@ -359,6 +389,112 @@
                                 placeholder="Enter 6-digit code to verify & enable">
                             <button type="button" (click)="verifyTotp()">Verify & Enable</button>
                         </div>
+                    </div>
+                }
+
+                <hr>
+                <div class="section-header-row">
+                    <h4>Active Sessions ({{ sessions.length }})</h4>
+                    @if (sessions.length > 1) {
+                        <button
+                            type="button"
+                            class="small-btn danger"
+                            (click)="revokeAllOtherSessions()">
+                            Sign Out Other Devices
+                        </button>
+                    }
+                </div>
+                @if (sessions.length === 0) {
+                    <p class="status-text">No active device sessions recorded.</p>
+                } @else {
+                    <div class="passkey-list">
+                        @for (s of sessions; track s.id) {
+                            <div class="passkey-item">
+                                <div class="passkey-info">
+                                    <div>
+                                        <strong>{{ s.userAgent }}</strong>
+                                        @if (s.isCurrent) {
+                                            <span class="meta-pill active-pill">Current Device</span>
+                                        }
+                                    </div>
+                                    <small class="passkey-date">
+                                        @if (s.ipAddress) {
+                                            IP: {{ s.ipAddress }} &bull;
+                                        }
+                                        @if (s.lastUsedAt) {
+                                            Last active {{ s.lastUsedAt }}
+                                        } @else if (s.createdAt) {
+                                            Signed in {{ s.createdAt }}
+                                        }
+                                    </small>
+                                </div>
+                                @if (!s.isCurrent) {
+                                    <button
+                                        type="button"
+                                        class="small-btn danger"
+                                        (click)="revokeSession(s.id)">
+                                        Revoke
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                <hr>
+                <h4>Personal Access Tokens / API Keys</h4>
+                <div class="api-key-create-row">
+                    <input
+                        type="text"
+                        name="newApiKeyLabel"
+                        [(ngModel)]="newApiKeyLabel"
+                        placeholder="Token Label (e.g., iOS Shortcut, CLI Script)">
+                    <input
+                        type="number"
+                        name="newApiKeyExpiresDays"
+                        [(ngModel)]="newApiKeyExpiresDays"
+                        min="1"
+                        max="3650"
+                        placeholder="Expires (days)">
+                    <button type="button" class="secondary" (click)="createApiKey()">
+                        Generate API Key
+                    </button>
+                </div>
+                @if (newlyCreatedApiKey) {
+                    <div class="totp-setup-box">
+                        <p><strong>New Personal Access Token (copy now &mdash; shown only once):</strong></p>
+                        <code>{{ newlyCreatedApiKey }}</code>
+                    </div>
+                }
+                @if (apiKeys.length > 0) {
+                    <div class="passkey-list">
+                        @for (k of apiKeys; track k.id) {
+                            <div class="passkey-item">
+                                <div class="passkey-info">
+                                    <div>
+                                        <strong>{{ k.label }}</strong>
+                                        <code>{{ k.keyPrefix }}</code>
+                                        @if (k.expired) {
+                                            <span class="meta-pill pending-pill">Expired</span>
+                                        }
+                                    </div>
+                                    <small class="passkey-date">
+                                        @if (k.createdAt) {
+                                            Created {{ k.createdAt }}
+                                        }
+                                        @if (k.lastUsedAt) {
+                                            &bull; Last used {{ k.lastUsedAt }}
+                                        }
+                                    </small>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="small-btn danger"
+                                    (click)="revokeApiKey(k.id)">
+                                    Revoke
+                                </button>
+                            </div>
+                        }
                     </div>
                 }
             </section>

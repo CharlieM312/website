@@ -66,6 +66,26 @@ export interface AdminUserItem {
     createdAt: string;
 }
 
+export interface UserSessionItem {
+    id: number;
+    userAgent: string;
+    ipAddress: string;
+    createdAt: string;
+    lastUsedAt: string;
+    expiresAt: number | null;
+    isCurrent: boolean;
+}
+
+export interface ApiKeyItem {
+    id: number;
+    label: string;
+    keyPrefix: string;
+    createdAt: string;
+    lastUsedAt: string;
+    expiresAt: number | null;
+    expired: boolean;
+}
+
 export interface TravelStats {
     totalVisits: number;
     uniqueAirports: number;
@@ -95,6 +115,9 @@ export class TrackerComponent implements OnInit, OnDestroy {
     private readonly oauthLoginUrl = '/api/oauth/login';
     private readonly oauthLinkUrl = '/api/oauth/link';
     private readonly updateUsernameUrl = '/api/user/username';
+    private readonly updatePasswordUrl = '/api/user/password';
+    private readonly sessionsUrl = '/api/sessions';
+    private readonly apiKeysUrl = '/api/api-keys';
     private readonly adminUsersUrl = '/api/admin/users';
     private readonly twoFaStatusUrl = '/api/2fa/status';
     private readonly totpSetupUrl = '/api/2fa/totp/setup';
@@ -125,6 +148,15 @@ export class TrackerComponent implements OnInit, OnDestroy {
 
     showSecuritySettings = false;
     newUsernameInput = '';
+    hasPassword = true;
+    currentPasswordInput = '';
+    newPasswordInput = '';
+    revokeOtherSessionsOnPasswordChange = false;
+    sessions: UserSessionItem[] = [];
+    apiKeys: ApiKeyItem[] = [];
+    newApiKeyLabel = '';
+    newApiKeyExpiresDays: number | null = 365;
+    newlyCreatedApiKey = '';
     totpEnabled = false;
     webauthnEnabled = false;
     passkeys: PasskeyItem[] = [];
@@ -258,6 +290,15 @@ export class TrackerComponent implements OnInit, OnDestroy {
         this.editingVisitId = null;
         this.showSecuritySettings = false;
         this.newUsernameInput = '';
+        this.hasPassword = true;
+        this.currentPasswordInput = '';
+        this.newPasswordInput = '';
+        this.revokeOtherSessionsOnPasswordChange = false;
+        this.sessions = [];
+        this.apiKeys = [];
+        this.newApiKeyLabel = '';
+        this.newApiKeyExpiresDays = 365;
+        this.newlyCreatedApiKey = '';
         this.showAdminPanel = false;
         this.adminUsers = [];
         this.pendingUserCount = 0;
@@ -812,6 +853,8 @@ export class TrackerComponent implements OnInit, OnDestroy {
         this.showSecuritySettings = !this.showSecuritySettings;
         if (this.showSecuritySettings) {
             void this.loadTwoFaStatus();
+            void this.loadSessions();
+            void this.loadApiKeys();
         }
     }
 
@@ -844,6 +887,9 @@ export class TrackerComponent implements OnInit, OnDestroy {
                             : `Security Key #${index + 1}`,
                     createdAt: typeof p['created_at'] === 'string' ? p['created_at'] : ''
                 }));
+            if (typeof body['has_password'] === 'boolean') {
+                this.hasPassword = body['has_password'];
+            }
             this.totpEnabled = Boolean(body['totp_enabled']);
             this.webauthnEnabled = Boolean(body['webauthn_enabled']) || this.passkeys.length > 0;
             this.oauthAccounts = this.mapOAuthAccounts(body['oauth_accounts']);
@@ -1139,6 +1185,325 @@ export class TrackerComponent implements OnInit, OnDestroy {
             }
         } catch {
             this.securityError = 'Network error while updating username.';
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async updatePassword(): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken) return;
+
+        if (!this.newPasswordInput || this.newPasswordInput.length < 8) {
+            this.securityError = 'New password must be at least 8 characters long.';
+            this.cdr.detectChanges();
+            return;
+        }
+        if (this.hasPassword && !this.currentPasswordInput) {
+            this.securityError = 'Current password is required to change your password.';
+            this.cdr.detectChanges();
+            return;
+        }
+
+        this.securityError = '';
+        this.securityMessage = '';
+
+        const payload: Record<string, unknown> = {
+            ['new_password']: this.newPasswordInput
+        };
+        if (this.hasPassword && this.currentPasswordInput) {
+            payload['current_password'] = this.currentPasswordInput;
+        }
+        if (this.revokeOtherSessionsOnPasswordChange) {
+            payload['revoke_other_sessions'] = true;
+        }
+
+        try {
+            const res = await fetch(this.updatePasswordUrl, {
+                method: 'PATCH',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json',
+                    ['Authorization']: `Bearer ${currentToken}`
+                }),
+                body: JSON.stringify(payload)
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== currentToken) return;
+
+            if (res.ok) {
+                this.hasPassword = true;
+                this.currentPasswordInput = '';
+                this.newPasswordInput = '';
+                if (this.revokeOtherSessionsOnPasswordChange) {
+                    this.sessions = this.sessions.filter(s => s.isCurrent);
+                    this.revokeOtherSessionsOnPasswordChange = false;
+                }
+                this.securityMessage =
+                    typeof body['message'] === 'string' && body['message']
+                        ? body['message']
+                        : 'Password updated.';
+            } else {
+                this.securityError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : 'Failed to update password.';
+            }
+        } catch {
+            this.securityError = 'Network error while updating password.';
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async loadSessions(): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken) return;
+
+        try {
+            const res = await fetch(this.sessionsUrl, {
+                headers: this.getRequestHeaders({
+                    ['Authorization']: `Bearer ${currentToken}`
+                })
+            });
+            if (!res.ok) return;
+            this.captureBookmark(res);
+
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== currentToken) return;
+
+            const rawSessions = Array.isArray(body['sessions'])
+                ? (body['sessions'] as Record<string, unknown>[])
+                : [];
+            this.sessions = rawSessions.map((s, idx) => ({
+                id: typeof s['id'] === 'number' ? s['id'] : idx + 1,
+                userAgent:
+                    typeof s['user_agent'] === 'string' && s['user_agent']
+                        ? s['user_agent']
+                        : 'Browser',
+                ipAddress: typeof s['ip_address'] === 'string' ? s['ip_address'] : '',
+                createdAt: typeof s['created_at'] === 'string' ? s['created_at'] : '',
+                lastUsedAt: typeof s['last_used_at'] === 'string' ? s['last_used_at'] : '',
+                expiresAt: typeof s['expires_at'] === 'number' ? s['expires_at'] : null,
+                isCurrent: Boolean(s['is_current'])
+            }));
+        } catch {
+            // Non-blocking session load
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async revokeSession(sessionId: number): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken || !sessionId) return;
+
+        this.securityError = '';
+        this.securityMessage = '';
+
+        try {
+            const res = await fetch(`${this.sessionsUrl}/${encodeURIComponent(String(sessionId))}`, {
+                method: 'DELETE',
+                headers: this.getRequestHeaders({
+                    ['Authorization']: `Bearer ${currentToken}`
+                })
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== currentToken) return;
+
+            if (res.ok) {
+                this.sessions = this.sessions.filter(s => s.id !== sessionId);
+                this.securityMessage = 'Session revoked.';
+            } else {
+                this.securityError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : 'Failed to revoke session.';
+            }
+        } catch {
+            this.securityError = 'Network error while revoking session.';
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async revokeAllOtherSessions(): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken) return;
+
+        this.securityError = '';
+        this.securityMessage = '';
+
+        try {
+            const res = await fetch(`${this.sessionsUrl}?all_others=true`, {
+                method: 'DELETE',
+                headers: this.getRequestHeaders({
+                    ['Authorization']: `Bearer ${currentToken}`
+                })
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== currentToken) return;
+
+            if (res.ok) {
+                this.sessions = this.sessions.filter(s => s.isCurrent);
+                this.securityMessage = 'Signed out of all other devices.';
+            } else {
+                this.securityError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : 'Failed to sign out of other devices.';
+            }
+        } catch {
+            this.securityError = 'Network error while signing out of other devices.';
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async loadApiKeys(): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken) return;
+
+        try {
+            const res = await fetch(this.apiKeysUrl, {
+                headers: this.getRequestHeaders({
+                    ['Authorization']: `Bearer ${currentToken}`
+                })
+            });
+            if (!res.ok) return;
+            this.captureBookmark(res);
+
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== currentToken) return;
+
+            const rawKeys = Array.isArray(body['api_keys'])
+                ? (body['api_keys'] as Record<string, unknown>[])
+                : [];
+            this.apiKeys = rawKeys.map((k, idx) => ({
+                id: typeof k['id'] === 'number' ? k['id'] : idx + 1,
+                label:
+                    typeof k['label'] === 'string' && k['label']
+                        ? k['label']
+                        : 'Personal Access Token',
+                keyPrefix: typeof k['key_prefix'] === 'string' ? k['key_prefix'] : '',
+                createdAt: typeof k['created_at'] === 'string' ? k['created_at'] : '',
+                lastUsedAt: typeof k['last_used_at'] === 'string' ? k['last_used_at'] : '',
+                expiresAt: typeof k['expires_at'] === 'number' ? k['expires_at'] : null,
+                expired: Boolean(k['expired'])
+            }));
+        } catch {
+            // Non-blocking API keys load
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async createApiKey(): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken) return;
+
+        const label = this.newApiKeyLabel.trim() || 'Personal Access Token';
+        const payload: Record<string, unknown> = { label };
+        if (this.newApiKeyExpiresDays && Number(this.newApiKeyExpiresDays) > 0) {
+            payload['expires_in_days'] = Number(this.newApiKeyExpiresDays);
+        }
+
+        this.securityError = '';
+        this.securityMessage = '';
+        this.newlyCreatedApiKey = '';
+
+        try {
+            const res = await fetch(this.apiKeysUrl, {
+                method: 'POST',
+                headers: this.getRequestHeaders({
+                    ['Content-Type']: 'application/json',
+                    ['Authorization']: `Bearer ${currentToken}`
+                }),
+                body: JSON.stringify(payload)
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== currentToken) return;
+
+            if (res.ok && typeof body['api_key'] === 'string') {
+                this.newlyCreatedApiKey = body['api_key'];
+                this.newApiKeyLabel = '';
+                const rawKeyObj = body['key'] as Record<string, unknown> | undefined;
+                const newItem: ApiKeyItem = {
+                    id:
+                        rawKeyObj && typeof rawKeyObj['id'] === 'number'
+                            ? rawKeyObj['id']
+                            : Date.now(),
+                    label:
+                        rawKeyObj && typeof rawKeyObj['label'] === 'string'
+                            ? rawKeyObj['label']
+                            : label,
+                    keyPrefix:
+                        rawKeyObj && typeof rawKeyObj['key_prefix'] === 'string'
+                            ? rawKeyObj['key_prefix']
+                            : `${this.newlyCreatedApiKey.slice(0, 12)}...`,
+                    createdAt: 'Just now',
+                    lastUsedAt: '',
+                    expiresAt:
+                        rawKeyObj && typeof rawKeyObj['expires_at'] === 'number'
+                            ? rawKeyObj['expires_at']
+                            : null,
+                    expired: false
+                };
+                this.apiKeys = [newItem, ...this.apiKeys];
+                this.securityMessage =
+                    typeof body['message'] === 'string' && body['message']
+                        ? body['message']
+                        : 'Copy this API key now. It cannot be viewed again.';
+            } else {
+                this.securityError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : 'Failed to create API key.';
+            }
+        } catch {
+            this.securityError = 'Network error while creating API key.';
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async revokeApiKey(keyId: number): Promise<void> {
+        const currentToken = this.sessionToken;
+        if (!currentToken || !keyId) return;
+
+        this.securityError = '';
+        this.securityMessage = '';
+
+        try {
+            const res = await fetch(`${this.apiKeysUrl}/${encodeURIComponent(String(keyId))}`, {
+                method: 'DELETE',
+                headers: this.getRequestHeaders({
+                    ['Authorization']: `Bearer ${currentToken}`
+                })
+            });
+
+            this.captureBookmark(res);
+            const body = (await res.json()) as Record<string, unknown>;
+            if (this.sessionToken !== currentToken) return;
+
+            if (res.ok) {
+                this.apiKeys = this.apiKeys.filter(k => k.id !== keyId);
+                this.securityMessage = 'API key revoked.';
+            } else {
+                this.securityError =
+                    typeof body['error'] === 'string'
+                        ? body['error']
+                        : 'Failed to revoke API key.';
+            }
+        } catch {
+            this.securityError = 'Network error while revoking API key.';
         } finally {
             this.cdr.detectChanges();
         }
