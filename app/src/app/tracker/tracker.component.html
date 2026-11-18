@@ -174,7 +174,23 @@
                                             Approve
                                         </button>
                                     }
-                                    @if (u.status !== 'rejected') {
+                                    @if (u.role !== 'admin') {
+                                        <button
+                                            type="button"
+                                            class="small-btn"
+                                            (click)="updateUserStatus(u.username, 'approved', 'admin')">
+                                            Make Admin
+                                        </button>
+                                    }
+                                    @if (u.role == 'admin' && u.username.toLowerCase() !== loggedInUser.toLowerCase()) {
+                                        <button
+                                            type="button"
+                                            class="small-btn"
+                                            (click)="updateUserStatus(u.username, 'approved', 'user')">
+                                            Make User
+                                        </button>
+                                    }
+                                    @if (u.status !== 'rejected' && u.username.toLowerCase() !== loggedInUser.toLowerCase()) {
                                         <button
                                             type="button"
                                             class="small-btn secondary"
