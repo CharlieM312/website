@@ -10,6 +10,7 @@ export interface VisitItem {
     username: string;
     iataCode: string;
     originIata: string;
+    destinationIata?: string;
     flightNumber: string;
     distanceKm: number | null;
     airportName: string;
@@ -2010,11 +2011,18 @@ export class TrackerComponent implements OnInit, OnDestroy {
                       ? Number(rawDistance)
                       : null;
 
+            const iataCode = typeof v['iata_code'] === 'string' ? v['iata_code'] : '';
+            const destinationIata =
+                typeof v['destination_iata'] === 'string' && v['destination_iata']
+                    ? v['destination_iata']
+                    : iataCode;
+
             return {
                 id: typeof v['id'] === 'number' ? v['id'] : Number(v['id'] || 0),
                 username: typeof v['username'] === 'string' && v['username'] ? v['username'] : 'Anonymous',
-                iataCode: typeof v['iata_code'] === 'string' ? v['iata_code'] : '',
+                iataCode,
                 originIata: typeof v['origin_iata'] === 'string' ? v['origin_iata'] : '',
+                destinationIata,
                 flightNumber: typeof v['flight_number'] === 'string' ? v['flight_number'] : '',
                 distanceKm: parsedDistance !== null && Number.isFinite(parsedDistance) ? parsedDistance : null,
                 airportName:

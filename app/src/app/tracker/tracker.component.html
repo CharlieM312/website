@@ -571,10 +571,16 @@
                 <div class="visit-header">
                     <div class="route-badges">
                         @if (v.originIata) {
-                            <span class="iata-badge origin">{{ v.originIata }}</span>
+                            <span
+                                class="iata-badge"
+                                [class.origin]="v.originIata !== v.iataCode"
+                                [class.visited]="v.originIata === v.iataCode">{{ v.originIata }}</span>
                             <span class="route-arrow">&rarr;</span>
                         }
-                        <span class="iata-badge">{{ v.iataCode }}</span>
+                        <span
+                            class="iata-badge"
+                            [class.origin]="(v.destinationIata || v.iataCode) !== v.iataCode"
+                            [class.visited]="(v.destinationIata || v.iataCode) === v.iataCode">{{ v.destinationIata || v.iataCode }}</span>
                         @if (v.flightNumber) {
                             <span class="meta-pill flight-pill">{{ v.flightNumber }}</span>
                         }

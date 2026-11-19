@@ -920,6 +920,9 @@ describe('TrackerComponent', () => {
     });
 
     it('should load and map visits with flight details and capture x-d1-bookmark', async () => {
+        jest.spyOn(component, 'ngOnInit').mockImplementation(() => undefined);
+        fixture.detectChanges();
+
         fetchMock.mockResolvedValueOnce({
             ok: true,
             status: 200,
@@ -932,6 +935,7 @@ describe('TrackerComponent', () => {
                     username: 'CharlieM312',
                     ['iata_code']: 'HAM',
                     ['origin_iata']: 'LHR',
+                    ['destination_iata']: 'HAM',
                     ['flight_number']: 'BA968',
                     ['distance_km']: 745,
                     ['airport_name']: 'Hamburg Airport',
@@ -939,6 +943,20 @@ describe('TrackerComponent', () => {
                     country: 'Germany',
                     ['visit_date']: '2026-09-15',
                     notes: 'Morning flight'
+                },
+                {
+                    id: 2,
+                    username: 'CharlieM312',
+                    ['iata_code']: 'LHR',
+                    ['origin_iata']: 'LHR',
+                    ['destination_iata']: 'HAM',
+                    ['flight_number']: 'BA968',
+                    ['distance_km']: 745,
+                    ['airport_name']: 'London Heathrow Airport',
+                    city: 'London',
+                    country: 'United Kingdom',
+                    ['visit_date']: '2026-09-15',
+                    notes: 'Departure airport'
                 },
                 {
                     ['iata_code']: 'LGW',
@@ -959,6 +977,7 @@ describe('TrackerComponent', () => {
                 username: 'CharlieM312',
                 iataCode: 'HAM',
                 originIata: 'LHR',
+                destinationIata: 'HAM',
                 flightNumber: 'BA968',
                 distanceKm: 745,
                 airportName: 'Hamburg Airport',
@@ -968,10 +987,25 @@ describe('TrackerComponent', () => {
                 notes: 'Morning flight'
             },
             {
+                id: 2,
+                username: 'CharlieM312',
+                iataCode: 'LHR',
+                originIata: 'LHR',
+                destinationIata: 'HAM',
+                flightNumber: 'BA968',
+                distanceKm: 745,
+                airportName: 'London Heathrow Airport',
+                city: 'London',
+                country: 'United Kingdom',
+                visitDate: '2026-09-15',
+                notes: 'Departure airport'
+            },
+            {
                 id: 0,
                 username: 'Anonymous',
                 iataCode: 'LGW',
                 originIata: '',
+                destinationIata: 'LGW',
                 flightNumber: '',
                 distanceKm: null,
                 airportName: 'Unknown Airport',
@@ -981,6 +1015,27 @@ describe('TrackerComponent', () => {
                 notes: ''
             }
         ]);
+
+        jest.spyOn(component, 'ngOnInit').mockImplementation(() => undefined);
+        fixture.detectChanges();
+        const cards = fixture.nativeElement.querySelectorAll('.visit-card');
+        expect(cards).toHaveLength(3);
+
+        // Card 0: destination visit (HAM visited, LHR -> HAM)
+        const card0Badges = cards[0].querySelectorAll('.iata-badge');
+        expect(card0Badges[0].textContent.trim()).toBe('LHR');
+        expect(card0Badges[0].classList.contains('origin')).toBe(true);
+        expect(card0Badges[1].textContent.trim()).toBe('HAM');
+        expect(card0Badges[1].classList.contains('visited')).toBe(true);
+
+        // Card 1: origin visit (LHR visited, LHR -> HAM)
+        const card1Badges = cards[1].querySelectorAll('.iata-badge');
+        expect(card1Badges[0].textContent.trim()).toBe('LHR');
+        expect(card1Badges[0].classList.contains('visited')).toBe(true);
+        expect(card1Badges[0].classList.contains('origin')).toBe(false);
+        expect(card1Badges[1].textContent.trim()).toBe('HAM');
+        expect(card1Badges[1].classList.contains('origin')).toBe(true);
+        expect(card1Badges[1].classList.contains('visited')).toBe(false);
     });
 
     it('should load travel stats from /api/stats', async () => {
