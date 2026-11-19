@@ -101,7 +101,7 @@ const getcommits = async (from, container, user, repo) => {
   });
 
   if (!response.ok) {
-    list.innerHTML = '<li>Failed to load commits</li>';
+    list.innerHTML = '<li>Commits can be found at <a href="https://github.com/${user}/${repo}/commits" target="_blank" rel="noopener noreferrer">GitHub Commits</a></li>';
     return;
   }
 
@@ -334,7 +334,7 @@ const getworkflows = async (from, container, user, repo) => {
   });
 
   if (!response.ok) {
-    list.innerHTML = '<li>Failed to load workflows</li>';
+    list.innerHTML = '<li>Workflows can be found at <a href="https://github.com/${user}/${repo}/actions" target="_blank" rel="noopener noreferrer">GitHub Actions</a></li>';
     return;
   }
 
