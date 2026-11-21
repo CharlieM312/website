@@ -135,6 +135,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
     private readonly adminStorageKey = 'tracker_is_admin';
     private readonly oauthModeStorageKey = 'tracker_oauth_mode';
     private readonly oauthProviderStorageKey = 'tracker_oauth_provider';
+    private readonly reCaptchaSiteKey = '6LcFGiwuAAAAAFMGjXiXaqEilTTODLbSAXiqYBRI';
     private subscriber = new Subscription();
 
     readonly oauthProviders = ['github', 'google', 'microsoft'];
@@ -147,7 +148,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
     isAdmin = false;
     pendingApprovalMessage = '';
 
-    showSecuritySettings = false;
+    showUserSettings = false;
     newUsernameInput = '';
     hasPassword = true;
     currentPasswordInput = '';
@@ -289,7 +290,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
         this.loggedInUser = '';
         this.isAdmin = false;
         this.editingVisitId = null;
-        this.showSecuritySettings = false;
+        this.showUserSettings = false;
         this.newUsernameInput = '';
         this.hasPassword = true;
         this.currentPasswordInput = '';
@@ -416,6 +417,38 @@ export class TrackerComponent implements OnInit, OnDestroy {
         }
     }
 
+    private async getRecaptchaToken(action: string): Promise<string> {
+        if (typeof window === 'undefined') return '';
+        const win = window as unknown as Record<string, unknown>;
+        const rawGrecaptcha = win['grecaptcha'] as
+            | {
+                  enterprise?: {
+                      ready?: (cb: () => void) => void;
+                      execute?: (siteKey: string, options: { action: string }) => Promise<string>;
+                  };
+                  ready?: (cb: () => void) => void;
+                  execute?: (siteKey: string, options: { action: string }) => Promise<string>;
+              }
+            | undefined;
+
+        const client = rawGrecaptcha?.enterprise ?? rawGrecaptcha;
+        if (!client || typeof client.execute !== 'function') return '';
+
+        return new Promise<string>(resolve => {
+            const runExecute = (): void => {
+                client
+                    .execute?.(this.reCaptchaSiteKey, { action })
+                    .then(token => resolve(typeof token === 'string' ? token : ''))
+                    .catch(() => resolve(''));
+            };
+            if (typeof client.ready === 'function') {
+                client.ready(runExecute);
+            } else {
+                runExecute();
+            }
+        });
+    }
+
     async onRequestAccount(): Promise<void> {
         const trimmedUser = this.loginUsername.trim();
         if (!trimmedUser || !this.loginPassword) {
@@ -429,15 +462,21 @@ export class TrackerComponent implements OnInit, OnDestroy {
         this.pendingApprovalMessage = '';
 
         try {
+            const recaptchaToken = await this.getRecaptchaToken('REGISTER');
+            const payload: Record<string, string> = {
+                username: trimmedUser,
+                password: this.loginPassword
+            };
+            if (recaptchaToken) {
+                payload['recaptcha_token'] = recaptchaToken;
+            }
+
             const res = await fetch(this.registerUrl, {
                 method: 'POST',
                 headers: this.getRequestHeaders({
                     ['Content-Type']: 'application/json'
                 }),
-                body: JSON.stringify({
-                    username: trimmedUser,
-                    password: this.loginPassword
-                })
+                body: JSON.stringify(payload)
             });
 
             this.captureBookmark(res);
@@ -582,7 +621,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
         };
 
         if (mode === 'link' && this.sessionToken) {
-            this.showSecuritySettings = true;
+            this.showUserSettings = true;
             this.securityError = '';
             this.securityMessage = '';
             void this.loadTwoFaStatus();
@@ -850,9 +889,9 @@ export class TrackerComponent implements OnInit, OnDestroy {
         }
     }
 
-    toggleSecuritySettings(): void {
-        this.showSecuritySettings = !this.showSecuritySettings;
-        if (this.showSecuritySettings) {
+    toggleUserSettings(): void {
+        this.showUserSettings = !this.showUserSettings;
+        if (this.showUserSettings) {
             void this.loadTwoFaStatus();
             void this.loadSessions();
             void this.loadApiKeys();

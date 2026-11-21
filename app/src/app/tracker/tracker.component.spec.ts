@@ -421,6 +421,54 @@ describe('TrackerComponent', () => {
         expect(component.pendingApprovalMessage).toContain('approve');
     });
 
+    it('should execute reCAPTCHA Enterprise and include recaptcha_token in POST /api/register when grecaptcha is available', async () => {
+        component.loginUsername = 'verified_traveler';
+        component.loginPassword = 'password123';
+
+        const executeMock = jest.fn().mockResolvedValue('recaptcha-enterprise-token-xyz');
+        const readyMock = jest.fn((cb: () => void) => cb());
+        (window as unknown as Record<string, unknown>)['grecaptcha'] = {
+            enterprise: {
+                ready: readyMock,
+                execute: executeMock
+            }
+        };
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 202,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                success: true,
+                ['pending_approval']: true,
+                status: 'pending',
+                username: 'verified_traveler'
+            })
+        });
+
+        try {
+            await component.onRequestAccount();
+
+            expect(executeMock).toHaveBeenCalledWith(
+                '6LcFGiwuAAAAAFMGjXiXaqEilTTODLbSAXiqYBRI',
+                { action: 'REGISTER' }
+            );
+            expect(fetchMock).toHaveBeenCalledWith('/api/register', {
+                method: 'POST',
+                headers: {
+                    ['Content-Type']: 'application/json'
+                },
+                body: JSON.stringify({
+                    username: 'verified_traveler',
+                    password: 'password123',
+                    ['recaptcha_token']: 'recaptcha-enterprise-token-xyz'
+                })
+            });
+        } finally {
+            delete (window as unknown as Record<string, unknown>)['grecaptcha'];
+        }
+    });
+
     it('should handle OAuth sign-in and linking/unlinking via /api/oauth/login and /api/oauth/link', async () => {
         component.loginUsername = 'CharlieM312';
 
