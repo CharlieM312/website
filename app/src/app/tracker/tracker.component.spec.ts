@@ -451,7 +451,7 @@ describe('TrackerComponent', () => {
 
             expect(executeMock).toHaveBeenCalledWith(
                 '6LcFGiwuAAAAAFMGjXiXaqEilTTODLbSAXiqYBRI',
-                { action: 'REGISTER' }
+                { action: 'signup' }
             );
             expect(fetchMock).toHaveBeenCalledWith('/api/register', {
                 method: 'POST',
@@ -1312,5 +1312,484 @@ describe('TrackerComponent', () => {
         });
         expect(component.visits).toHaveLength(0);
         expect(component.submitSuccess).toBe('Visit deleted.');
+    });
+
+    it('should cover validation, pending approval, and network error branches in onLogin and onRequestAccount', async () => {
+        component.loginUsername = '';
+        component.loginPassword = '';
+        await component.onLogin();
+        expect(component.authError).toBe('Please enter both username and password.');
+
+        await component.onRequestAccount();
+        expect(component.authError).toBe('Enter a username and password to request an account.');
+
+        component.loginUsername = 'pending_user';
+        component.loginPassword = 'password123';
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 403,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                ['pending_approval']: true,
+                status: 'pending'
+            })
+        });
+        await component.onLogin();
+        expect(component.pendingApprovalMessage).toContain('awaiting admin approval');
+
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 401,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.onLogin();
+        expect(component.authError).toBe('Invalid credentials or 2FA code.');
+
+        fetchMock.mockRejectedValueOnce(new Error('Network down'));
+        await component.onLogin();
+        expect(component.authError).toBe('Network error: Unable to sign in.');
+
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 409,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.onRequestAccount();
+        expect(component.authError).toBe('Failed to submit account request.');
+
+        fetchMock.mockRejectedValueOnce(new Error('Network down'));
+        await component.onRequestAccount();
+        expect(component.authError).toBe('Network error: Unable to request account.');
+    });
+
+    it('should cover OAuth callback link/login branches and OAuth error handling', async () => {
+        await component.handleOAuthCallback('?other=1');
+
+        // Link mode callback success & failure & network error
+        component.sessionToken = 'active-token';
+        localStorage.setItem('tracker_oauth_mode', 'link');
+        localStorage.setItem('tracker_oauth_provider', 'microsoft');
+        fetchMock
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({})
+            })
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({
+                    ['oauth_accounts']: [
+                        { id: 1, provider: 'microsoft', ['provider_user_id']: 'ms-1' }
+                    ]
+                })
+            });
+        await component.handleOAuthCallback('?code=ms-code&state=st-1');
+        expect(component.securityMessage).toBe('Linked microsoft account.');
+
+        localStorage.setItem('tracker_oauth_mode', 'link');
+        fetchMock
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({})
+            })
+            .mockResolvedValueOnce({
+                ok: false,
+                status: 400,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({})
+            });
+        await component.handleOAuthCallback('#id_token=google-jwt');
+        expect(component.securityError).toBe('Failed to link google account.');
+
+        localStorage.setItem('tracker_oauth_mode', 'link');
+        fetchMock
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({})
+            })
+            .mockRejectedValueOnce(new Error('Network fail'));
+        await component.handleOAuthCallback('?code=gh-code');
+        expect(component.securityError).toContain('Network error while completing');
+
+        // Login mode callback: pending approval, error, network error
+        component.sessionToken = '';
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 202,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                status: 'pending'
+            })
+        });
+        await component.handleOAuthCallback('?code=gh-pending');
+        expect(component.pendingApprovalMessage).toContain('awaiting admin approval');
+
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 400,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.handleOAuthCallback('?code=gh-fail');
+        expect(component.authError).toContain('Failed to complete');
+
+        fetchMock.mockRejectedValueOnce(new Error('Network fail'));
+        await component.handleOAuthCallback('?code=gh-net');
+        expect(component.authError).toContain('Network error while completing');
+
+        // onOAuthLogin missing client_id for microsoft/google and prompt cancellation
+        component.loginUsername = '';
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 500,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.onOAuthLogin('microsoft');
+        expect(component.authError).toContain('Could not contact OAuth service');
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({ providers: { google: { ['client_id']: '' } } })
+        });
+        await component.onOAuthLogin('google');
+        expect(component.authError).toContain('GOOGLE_CLIENT_ID is missing');
+
+        jest.spyOn(window, 'prompt').mockReturnValue('');
+        fetchMock.mockRejectedValueOnce(new Error('Network fail'));
+        await component.onOAuthLogin('github');
+        expect(component.authError).toContain('Enter your username/email first');
+
+        component.loginUsername = 'pending_oauth';
+        component.totpCode = '123456';
+        fetchMock
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({})
+            })
+            .mockResolvedValueOnce({
+                ok: false,
+                status: 202,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({ ['pending_approval']: true })
+            });
+        await component.onOAuthLogin('github');
+        expect(component.pendingApprovalMessage).toContain('awaiting admin approval');
+
+        fetchMock
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({})
+            })
+            .mockResolvedValueOnce({
+                ok: false,
+                status: 401,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({})
+            });
+        await component.onOAuthLogin('github');
+        expect(component.authError).toBe('Failed to sign in with github.');
+
+        fetchMock
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({})
+            })
+            .mockRejectedValueOnce(new Error('Network fail'));
+        await component.onOAuthLogin('github');
+        expect(component.authError).toBe('Network error while signing in with github.');
+    });
+
+    it('should cover YubiKey login, passkey registration, TOTP, and security settings error branches', async () => {
+        component.loginUsername = '';
+        await component.onYubiKeyLogin();
+        expect(component.authError).toContain('Enter your username first');
+
+        component.loginUsername = 'CharlieM312';
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 400,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.onYubiKeyLogin();
+        expect(component.authError).toBe('Failed to start YubiKey challenge.');
+
+        const getNullMock = jest.fn().mockResolvedValue(null);
+        const createNullMock = jest.fn().mockResolvedValue(null);
+        Object.defineProperty(navigator, 'credentials', {
+            value: { get: getNullMock, create: createNullMock },
+            configurable: true
+        });
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({ challenge: 'Y2hhbGxlbmdl', rpId: 'localhost' })
+        });
+        await component.onYubiKeyLogin();
+        expect(component.authError).toBe('YubiKey authentication was cancelled.');
+
+        fetchMock.mockRejectedValueOnce(new Error('Network fail'));
+        await component.onYubiKeyLogin();
+        expect(component.authError).toBe('YubiKey authentication failed or was cancelled.');
+
+        // Security settings & 2FA error branches
+        component.sessionToken = 'uuid-session-token';
+        component.toggleUserSettings();
+        expect(component.showUserSettings).toBe(true);
+        component.toggleAdminPanel();
+        expect(component.showAdminPanel).toBe(true);
+
+        // linkOAuthProvider & unlinkOAuthProvider error branches
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({ providers: { microsoft: { ['client_id']: '' } } })
+        });
+        await component.linkOAuthProvider('microsoft');
+        expect(component.securityError).toContain('MICROSOFT_CLIENT_ID is missing');
+
+        jest.spyOn(window, 'prompt').mockReturnValue('gh_user');
+        fetchMock
+            .mockResolvedValueOnce({
+                ok: true,
+                status: 200,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({})
+            })
+            .mockResolvedValueOnce({
+                ok: false,
+                status: 400,
+                headers: { get: jest.fn().mockReturnValue(null) },
+                json: jest.fn().mockResolvedValue({})
+            });
+        await component.linkOAuthProvider('github');
+        expect(component.securityError).toBe('Failed to link github account.');
+
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 400,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.unlinkOAuthProvider('github');
+        expect(component.securityError).toBe('Failed to unlink github account.');
+
+        // Username & password validation and failure branches
+        component.newUsernameInput = '';
+        await component.updateOwnUsername();
+        expect(component.securityError).toBe('Enter a new username first.');
+
+        component.loggedInUser = 'CharlieM312';
+        component.newUsernameInput = 'CharlieM312';
+        await component.updateOwnUsername();
+        expect(component.securityMessage).toBe('Username is already set to that value.');
+
+        component.newUsernameInput = 'TakenName';
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 409,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.updateOwnUsername();
+        expect(component.securityError).toBe('Failed to update username.');
+
+        component.newPasswordInput = 'short';
+        await component.updatePassword();
+        expect(component.securityError).toContain('at least 8 characters');
+
+        component.newPasswordInput = 'validPass123';
+        component.hasPassword = true;
+        component.currentPasswordInput = '';
+        await component.updatePassword();
+        expect(component.securityError).toContain('Current password is required');
+
+        component.currentPasswordInput = 'wrongCurrent';
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 401,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.updatePassword();
+        expect(component.securityError).toBe('Failed to update password.');
+
+        // Sessions & API Keys error branches
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 400,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.revokeSession(99);
+        expect(component.securityError).toBe('Failed to revoke session.');
+
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 400,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.revokeAllOtherSessions();
+        expect(component.securityError).toBe('Failed to sign out of other devices.');
+
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 400,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.createApiKey();
+        expect(component.securityError).toBe('Failed to create API key.');
+
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 400,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.revokeApiKey(99);
+        expect(component.securityError).toBe('Failed to revoke API key.');
+
+        // TOTP & WebAuthn error branches
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 400,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.setupTotp();
+        expect(component.securityError).toBe('Failed to generate Authenticator secret.');
+
+        component.totpVerifyCode = '';
+        await component.verifyTotp();
+        expect(component.securityError).toContain('Enter the 6-digit code');
+
+        component.totpVerifyCode = '000000';
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 400,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.verifyTotp();
+        expect(component.securityError).toBe('Invalid verification code. Please try again.');
+
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 400,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.disableTotp();
+        expect(component.securityError).toBe('Failed to disable Authenticator 2FA.');
+
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 400,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.disableWebAuthn();
+        expect(component.securityError).toBe('Failed to remove YubiKey.');
+
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({ challenge: 'Y2hhbGxlbmdl' })
+        });
+        await component.registerYubiKey();
+        expect(component.securityError).toBe('YubiKey registration was cancelled.');
+    });
+
+    it('should cover full loadStats breakdown, cancelEdit, and 401 session expiry on submit/delete', async () => {
+        fetchMock.mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({
+                ['total_visits']: 3,
+                ['unique_airports']: 2,
+                ['unique_countries']: 2,
+                ['total_distance_km']: 1500,
+                ['total_distance_miles']: 932,
+                ['first_visit_date']: '2025-01-01',
+                ['last_visit_date']: '2026-11-01',
+                ['most_visited_airports']: [
+                    {
+                        ['iata_code']: 'LHR',
+                        ['airport_name']: 'Heathrow',
+                        city: 'London',
+                        country: 'UK',
+                        ['visit_count']: 2
+                    }
+                ],
+                ['countries_visited']: [
+                    { country: 'UK', ['visit_count']: 2, ['unique_airports']: 1 }
+                ],
+                ['visits_by_year']: [
+                    { year: 2026, ['visit_count']: 3, ['unique_airports']: 2 }
+                ]
+            })
+        });
+        await component.loadStats();
+        expect(component.stats?.firstVisitDate).toBe('2025-01-01');
+        expect(component.stats?.mostVisitedAirports).toHaveLength(1);
+        expect(component.stats?.countriesVisited).toHaveLength(1);
+        expect(component.stats?.visitsByYear?.[0].year).toBe('2026');
+
+        component.editingVisitId = 5;
+        component.cancelEdit();
+        expect(component.editingVisitId).toBeNull();
+
+        component.sessionToken = '';
+        await component.onSubmit();
+        expect(component.submitError).toContain('Please sign in first');
+
+        await component.deleteVisit(1);
+        expect(component.submitError).toContain('Please sign in first');
+
+        component.sessionToken = 'expired-token';
+        component.iataCode = 'LHR';
+        component.visitDate = '2026-11-21';
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 401,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockRejectedValue(new Error('Invalid JSON'))
+        });
+        await component.onSubmit();
+        expect(component.sessionToken).toBe('');
+
+        component.sessionToken = 'expired-token';
+        fetchMock.mockResolvedValueOnce({
+            ok: false,
+            status: 401,
+            headers: { get: jest.fn().mockReturnValue(null) },
+            json: jest.fn().mockResolvedValue({})
+        });
+        await component.deleteVisit(1);
+        expect(component.sessionToken).toBe('');
     });
 });
