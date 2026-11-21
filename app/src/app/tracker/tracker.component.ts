@@ -425,6 +425,24 @@ export class TrackerComponent implements OnInit, OnDestroy {
 
     private initRecaptcha(): void {
         if (typeof document === 'undefined' || typeof window === 'undefined') return;
+        const requestInitialAssessment = async (): Promise<void> => {
+            const token = await this.getRecaptchaToken('login');
+            if (!token) return;
+            try {
+                await fetch('/api/recaptcha/assess', {
+                    method: 'POST',
+                    headers: this.getRequestHeaders({
+                        ['Content-Type']: 'application/json'
+                    }),
+                    body: JSON.stringify({
+                        ['recaptcha_token']: token,
+                        action: 'login'
+                    })
+                });
+            } catch {
+                // Non-blocking initial reCAPTCHA assessment
+            }
+        };
         const scriptUrl = `https://www.google.com/recaptcha/enterprise.js?render=${this.reCaptchaSiteKey}`;
         const existing = document.querySelector('script[src*="recaptcha/enterprise.js"]');
         if (!existing && document.head) {
@@ -433,11 +451,11 @@ export class TrackerComponent implements OnInit, OnDestroy {
             script.async = true;
             script.defer = true;
             script.onload = (): void => {
-                void this.getRecaptchaToken('login');
+                void requestInitialAssessment();
             };
             document.head.appendChild(script);
         } else {
-            void this.getRecaptchaToken('login');
+            void requestInitialAssessment();
         }
     }
 
