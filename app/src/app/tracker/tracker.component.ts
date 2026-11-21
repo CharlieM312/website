@@ -235,6 +235,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
         );
 
         if (typeof window !== 'undefined') {
+            this.initRecaptcha();
             if (window.location?.search?.includes('code=')) {
                 void this.handleOAuthCallback(window.location.search);
             } else if (window.location?.hash?.includes('id_token=')) {
@@ -381,6 +382,11 @@ export class TrackerComponent implements OnInit, OnDestroy {
         }
 
         try {
+            const recaptchaToken = await this.getRecaptchaToken('login');
+            if (recaptchaToken) {
+                payload['recaptcha_token'] = recaptchaToken;
+            }
+
             const res = await fetch(this.loginUrl, {
                 method: 'POST',
                 headers: this.getRequestHeaders({
@@ -414,6 +420,24 @@ export class TrackerComponent implements OnInit, OnDestroy {
         } finally {
             this.authenticating = false;
             this.cdr.detectChanges();
+        }
+    }
+
+    private initRecaptcha(): void {
+        if (typeof document === 'undefined' || typeof window === 'undefined') return;
+        const scriptUrl = `https://www.google.com/recaptcha/enterprise.js?render=${this.reCaptchaSiteKey}`;
+        const existing = document.querySelector('script[src*="recaptcha/enterprise.js"]');
+        if (!existing && document.head) {
+            const script = document.createElement('script');
+            script.src = scriptUrl;
+            script.async = true;
+            script.defer = true;
+            script.onload = (): void => {
+                void this.getRecaptchaToken('login');
+            };
+            document.head.appendChild(script);
+        } else {
+            void this.getRecaptchaToken('login');
         }
     }
 
@@ -462,7 +486,7 @@ export class TrackerComponent implements OnInit, OnDestroy {
         this.pendingApprovalMessage = '';
 
         try {
-            const recaptchaToken = await this.getRecaptchaToken('REGISTER');
+            const recaptchaToken = await this.getRecaptchaToken('signup');
             const payload: Record<string, string> = {
                 username: trimmedUser,
                 password: this.loginPassword
@@ -1259,6 +1283,11 @@ export class TrackerComponent implements OnInit, OnDestroy {
         }
 
         try {
+            const recaptchaToken = await this.getRecaptchaToken('password_reset');
+            if (recaptchaToken) {
+                payload['recaptcha_token'] = recaptchaToken;
+            }
+
             const res = await fetch(this.updatePasswordUrl, {
                 method: 'PATCH',
                 headers: this.getRequestHeaders({
