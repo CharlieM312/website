@@ -62,13 +62,13 @@
                     maxlength="6"
                     inputmode="numeric"
                     autocomplete="one-time-code"
-                    placeholder="6-Digit Authenticator Code (if 2FA enabled)">
+                    placeholder="6-Digit Authenticator Code (if 2FA is enabled)">
                 <div class="form-actions">
                     <button type="submit" [disabled]="authenticating">
                         {{ authenticating ? 'Signing In...' : 'Sign In with Password / 2FA' }}
                     </button>
                     <button type="button" class="secondary" [disabled]="authenticating" (click)="onYubiKeyLogin()">
-                        Sign In with YubiKey
+                        Sign In with YubiKey/Passkey
                     </button>
                     <button type="button" class="secondary" [disabled]="authenticating" (click)="onRequestAccount()">
                         Request Account
@@ -123,8 +123,8 @@
                         }
                     </button>
                 }
-                <button type="button" class="small-btn" (click)="toggleSecuritySettings()">
-                    {{ showSecuritySettings ? 'Hide 2FA Settings' : '2FA / YubiKey Setup' }}
+                <button type="button" class="small-btn" (click)="toggleUserSettings()">
+                    {{ showUserSettings ? 'Hide User Settings' : 'Show User Settings' }}
                 </button>
                 <button type="button" class="small-btn secondary" (click)="onLogout()">Sign Out</button>
             </div>
@@ -220,7 +220,7 @@
             </section>
         }
 
-        @if (showSecuritySettings) {
+        @if (showUserSettings) {
             <section class="security-panel">
                 <h3>Two-Factor Authentication Setup</h3>
                 <div class="twofa-status-row">
