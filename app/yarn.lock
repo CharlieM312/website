@@ -3160,12 +3160,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/leaflet@npm:^1.9.22":
-  version: 1.9.22
-  resolution: "@types/leaflet@npm:1.9.22"
+"@types/leaflet@npm:^1.9.23":
+  version: 1.9.23
+  resolution: "@types/leaflet@npm:1.9.23"
   dependencies:
     "@types/geojson": "npm:*"
-  checksum: 10c0/ce2e09d0f208244478c6103ba64726b33a474f89f303860c7b0494ca1bb44f1744285d93c90093c95669497c7dbdc7c206495af0b741fe6e251bf106b0415593
+  checksum: 10c0/8fd82e964e1bee3ad855474eed6a19fdf6e55a09dc3958ff7bb9c3ecedcb1b028f3383a1209f6d893d7ec7b83db61e8e754c6e80db535e26494775d85b4fac3c
   languageName: node
   linkType: hard
 
@@ -4074,7 +4074,7 @@ __metadata:
     "@angular/router": "npm:22.3.0"
     "@types/jest": "npm:^30.0.0"
     "@types/jsdom": "npm:^30.0.0"
-    "@types/leaflet": "npm:^1.9.22"
+    "@types/leaflet": "npm:^1.9.23"
     "@types/node": "npm:^26.6.10"
     angular-eslint: "npm:22.8.0"
     eslint: "npm:^10.15.0"
